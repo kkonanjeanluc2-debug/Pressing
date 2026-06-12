@@ -80,8 +80,15 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
     const nomFichier = `ticket-${ticket.numero.replace('#', '')}.pdf`
     const fichier = new File([doc.output('blob')], nomFichier, { type: 'application/pdf' })
 
-    // Téléphone : le PDF part en pièce jointe via le partage natif
-    if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [fichier] })) {
+    // Téléphone UNIQUEMENT : le PDF part en pièce jointe via le partage natif.
+    // (Windows propose aussi une fenêtre de partage, inutile pour WhatsApp Web :
+    // sur ordinateur on passe par le guide téléchargement + discussion.)
+    const estMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if (
+      estMobile &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare({ files: [fichier] })
+    ) {
       try {
         await navigator.share({ files: [fichier], text: messageWhatsAppTicket })
       } catch {
