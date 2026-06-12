@@ -23,7 +23,8 @@
       "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" add -A)",
       "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" push)",
       "PowerShell(Remove-Item \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\\\\components\\\\ui\\\\PressingSwitcher.tsx\" -Confirm:$false)",
-      "PowerShell(Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue)"
+      "PowerShell(Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue)",
+      "PowerShell(npm install jspdf jspdf-autotable --no-audit --no-fund 2>&1)"
     ]
   }
 }

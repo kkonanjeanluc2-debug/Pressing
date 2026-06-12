@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card'
 import { useProfil } from '@/hooks/useProfil'
 import { changerStatutTicket } from '@/hooks/useTickets'
 import { createClient } from '@/lib/supabase/client'
+import { genererTicketPdf } from '@/lib/ticketPdf'
 import {
   estEnRetard,
   formatDate,
@@ -35,7 +36,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   const [info, setInfo] = useState<string | null>(null)
   const [modalEncaissement, setModalEncaissement] = useState(false)
   const [messageWhatsApp, setMessageWhatsApp] = useState<string | null>(null)
-  const [formatImpression, setFormatImpression] = useState<'a4' | 'recu'>('a4')
+  const [envoiWhatsApp, setEnvoiWhatsApp] = useState(false)
 
   // Modal d'encaissement
   const resteAPayer = ticket.montant_total - ticket.montant_paye
@@ -55,14 +56,48 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         (resteAPayer > 0 ? ` (reste à payer ${formatFCFA(resteAPayer)})` : '') +
         `. Retrait prévu le ${formatDate(ticket.date_prevue)}. Merci de votre confiance !`
 
-  const lienWhatsApp = ticket.client
-    ? `https://wa.me/225${ticket.client.telephone.replace(/\D/g, '').replace(/^225/, '')}?text=${encodeURIComponent(messageWhatsAppTicket)}`
-    : null
+  /** Télécharge le ticket en PDF A4. */
+  function telechargerPdf() {
+    const doc = genererTicketPdf(ticket, pressing)
+    doc.save(`ticket-${ticket.numero.replace('#', '')}.pdf`)
+  }
 
-  /** Lance l'impression dans le format choisi (PDF via le navigateur). */
-  function imprimer(format: 'a4' | 'recu') {
-    setFormatImpression(format)
-    setTimeout(() => window.print(), 150)
+  /**
+   * Envoie le ticket en PDF sur le WhatsApp du client :
+   * le PDF est généré, hébergé, et le lien part dans le message.
+   */
+  async function envoyerWhatsAppPdf() {
+    if (!ticket.client) return
+    setEnvoiWhatsApp(true)
+    setErreur(null)
+    // Fenêtre ouverte AVANT l'attente réseau (sinon bloquée par le navigateur)
+    const fenetre = window.open('', '_blank')
+
+    let texte = messageWhatsAppTicket
+    try {
+      const doc = genererTicketPdf(ticket, pressing)
+      const pdfBase64 = doc.output('datauristring').split(',')[1] ?? ''
+      const res = await fetch('/api/ticket-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket_id: ticket.id, pdf_base64: pdfBase64 }),
+      })
+      const data = (await res.json()) as { succes: boolean; url?: string }
+      if (data.succes && data.url) {
+        texte = `${messageWhatsAppTicket}\n\n📄 Votre ticket en PDF : ${data.url}`
+      }
+    } catch {
+      // En cas d'échec d'hébergement : le message part sans le lien PDF
+    }
+
+    const tel = ticket.client.telephone.replace(/\D/g, '').replace(/^225/, '')
+    const url = `https://wa.me/225${tel}?text=${encodeURIComponent(texte)}`
+    if (fenetre) {
+      fenetre.location.href = url
+    } else {
+      window.open(url, '_blank')
+    }
+    setEnvoiWhatsApp(false)
   }
 
   async function changerStatut(statut: 'en_traitement' | 'pret' | 'recupere' | 'annule') {
@@ -155,12 +190,8 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
 
   return (
     <>
-    {/* Format de page selon le type d'export */}
-    {formatImpression === 'recu' ? (
-      <style>{`@media print { @page { size: 80mm auto; margin: 4mm; } }`}</style>
-    ) : (
-      <style>{`@media print { @page { size: A4; margin: 12mm; } }`}</style>
-    )}
+    {/* Impression depuis cette page = reçu de caisse 80mm */}
+    <style>{`@media print { @page { size: 80mm auto; margin: 4mm; } }`}</style>
 
     <div className="space-y-4 print:hidden">
       {nouveauticket && (
@@ -264,29 +295,32 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
       <div className="grid grid-cols-3 gap-2">
         <button
           type="button"
-          onClick={() => imprimer('a4')}
+          onClick={telechargerPdf}
           className="rounded-card border border-pressci-primary bg-white px-2 py-2.5 text-sm font-semibold text-pressci-primary active:bg-pressci-light"
         >
           📄 PDF A4
         </button>
         <button
           type="button"
-          onClick={() => imprimer('recu')}
+          onClick={() => window.print()}
           className="rounded-card border border-pressci-primary bg-white px-2 py-2.5 text-sm font-semibold text-pressci-primary active:bg-pressci-light"
         >
           🧾 Reçu caisse
         </button>
-        {lienWhatsApp && (
-          <a
-            href={lienWhatsApp}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center rounded-card bg-[#25D366] px-2 py-2.5 text-sm font-semibold text-white active:brightness-90"
+        {ticket.client && (
+          <button
+            type="button"
+            onClick={() => void envoyerWhatsAppPdf()}
+            disabled={envoiWhatsApp}
+            className="flex items-center justify-center rounded-card bg-[#25D366] px-2 py-2.5 text-sm font-semibold text-white active:brightness-90 disabled:opacity-60"
           >
-            💬 WhatsApp
-          </a>
+            {envoiWhatsApp ? <span className="spinner" /> : '💬 WhatsApp'}
+          </button>
         )}
       </div>
+      <p className="-mt-2 text-center text-xs text-gray-400">
+        WhatsApp : le client reçoit le message avec son ticket en PDF.
+      </p>
 
       {erreur && (
         <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>
@@ -441,136 +475,8 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
       )}
     </div>
 
-    {/* ================= GABARIT A4 (impression uniquement) ================= */}
-    {formatImpression === 'a4' && (
-      <div className="hidden print:block">
-        {/* En-tête */}
-        <div className="flex items-start justify-between rounded-card bg-pressci-dark p-5 text-white">
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-accent text-base font-bold text-pressci-dark">
-                P
-              </span>
-              <span className="text-sm font-semibold text-pressci-accent">
-                PressCI — Gestion de pressing
-              </span>
-            </div>
-            <h1 className="text-2xl font-bold text-white">{pressing.nom}</h1>
-            <p className="text-sm text-pressci-light/90">
-              {[pressing.adresse, pressing.commune].filter(Boolean).join(', ')}
-            </p>
-            {pressing.telephone && (
-              <p className="text-sm text-pressci-light/90">Tél : {pressing.telephone}</p>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-lg font-bold uppercase tracking-wide text-pressci-accent">
-              Ticket de dépôt
-            </p>
-            <p className="text-3xl font-bold text-white">{ticket.numero}</p>
-            <p className="text-xs text-pressci-light/80">
-              Édité le {formatDate(new Date())} à {formatHeure(new Date())}
-            </p>
-          </div>
-        </div>
-        <div className="mt-1.5 h-1.5 rounded-full bg-pressci-accent" />
-
-        {/* Client et dates */}
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <div className="rounded-card border border-gray-200 p-3">
-            <p className="text-xs font-semibold uppercase text-gray-400">Client</p>
-            <p className="text-base font-bold text-gray-900">{ticket.client?.nom}</p>
-            <p className="text-sm text-gray-600">{ticket.client?.telephone}</p>
-          </div>
-          <div className="rounded-card border border-gray-200 p-3 text-sm">
-            <p>
-              <span className="text-gray-500">Déposé le : </span>
-              <span className="font-medium">{formatDateHeure(ticket.date_depot)}</span>
-            </p>
-            <p>
-              <span className="text-gray-500">Retrait prévu : </span>
-              <span className="font-medium">{formatDate(ticket.date_prevue)}</span>
-            </p>
-            {ticket.date_recuperation && (
-              <p>
-                <span className="text-gray-500">Récupéré le : </span>
-                <span className="font-semibold text-pressci-primary">
-                  {formatDateHeure(ticket.date_recuperation)}
-                </span>
-              </p>
-            )}
-            <p>
-              <span className="text-gray-500">Statut : </span>
-              <span className="font-semibold">{STATUT_LABELS[ticket.statut]}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Articles */}
-        <table className="mt-4 w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-pressci-primary text-left text-white">
-              <th className="rounded-l px-3 py-2 font-semibold">Article</th>
-              <th className="px-3 py-2 text-center font-semibold">Qté</th>
-              <th className="px-3 py-2 text-right font-semibold">Prix unitaire</th>
-              <th className="rounded-r px-3 py-2 text-right font-semibold">Sous-total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(ticket.articles ?? []).map((a) => (
-              <tr key={a.id} className="border-b border-gray-200">
-                <td className="px-3 py-2">{a.type_article}</td>
-                <td className="px-3 py-2 text-center">{a.quantite}</td>
-                <td className="px-3 py-2 text-right">{formatFCFA(a.prix_unitaire)}</td>
-                <td className="px-3 py-2 text-right font-medium">{formatFCFA(a.sous_total)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Totaux */}
-        <div className="mt-4 ml-auto w-72 space-y-1 text-sm">
-          <div className="flex justify-between rounded-card bg-pressci-light px-3 py-2">
-            <span className="font-semibold text-pressci-dark">TOTAL</span>
-            <span className="text-base font-bold text-pressci-dark">
-              {formatFCFA(ticket.montant_total)}
-            </span>
-          </div>
-          <div className="flex justify-between px-3 py-1">
-            <span className="text-gray-500">Payé</span>
-            <span className="font-medium text-pressci-primary">
-              {formatFCFA(ticket.montant_paye)}
-            </span>
-          </div>
-          {resteAPayer > 0 && ticket.statut !== 'annule' && (
-            <div className="flex justify-between rounded-card bg-orange-50 px-3 py-1.5">
-              <span className="font-semibold text-orange-700">Reste à payer</span>
-              <span className="font-bold text-orange-700">{formatFCFA(resteAPayer)}</span>
-            </div>
-          )}
-          {ticket.mode_paiement && (
-            <div className="flex justify-between px-3 py-1">
-              <span className="text-gray-500">Mode de paiement</span>
-              <span className="font-medium">{MODE_PAIEMENT_LABELS[ticket.mode_paiement]}</span>
-            </div>
-          )}
-        </div>
-
-        {ticket.notes && (
-          <p className="mt-4 rounded-card border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-            📝 {ticket.notes}
-          </p>
-        )}
-
-        <div className="mt-8 rounded-full bg-pressci-light px-4 py-1.5 text-center text-[10px] font-medium text-pressci-dark">
-          Merci de votre confiance ! Présentez ce ticket au retrait de votre linge. — Document
-          généré par PressCI le {formatDate(new Date())} à {formatHeure(new Date())}
-        </div>
-      </div>
-    )}
-
     {/* ============ GABARIT REÇU DE CAISSE 80mm (impression uniquement) ============ */}
-    {formatImpression === 'recu' && (
+    {(
       <div className="hidden text-[11px] leading-snug text-gray-900 print:block">
         <div className="text-center">
           <p className="text-sm font-bold uppercase">{pressing.nom}</p>
