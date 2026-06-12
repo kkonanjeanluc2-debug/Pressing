@@ -494,7 +494,6 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
                 id="montant_recu"
                 type="number"
                 min={0}
-                step={50}
                 value={montantRecu}
                 onChange={(e) => setMontantRecu(e.target.value)}
                 className="w-full rounded-card border border-gray-300 px-3 py-3 outline-none focus:border-pressci-primary"

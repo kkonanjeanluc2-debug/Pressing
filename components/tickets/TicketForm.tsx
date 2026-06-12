@@ -483,7 +483,6 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                           <input
                             type="number"
                             min={0}
-                            step={50}
                             value={article.prix_unitaire || ''}
                             placeholder="Prix"
                             onChange={(e) =>
@@ -554,7 +553,6 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                     type="number"
                     name="montant_paye"
                     min={0}
-                    step={50}
                     placeholder="0 si paiement au retrait"
                     value={montantPaye}
                     onChange={(e) => setMontantPaye(e.target.value)}

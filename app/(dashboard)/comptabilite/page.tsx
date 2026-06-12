@@ -502,7 +502,6 @@ export default function ComptabilitePage() {
                         label="Montant (FCFA)"
                         type="number"
                         min={1}
-                        step={50}
                         placeholder="Ex : 15 000"
                         value={montant}
                         onChange={(e) => setMontant(e.target.value)}

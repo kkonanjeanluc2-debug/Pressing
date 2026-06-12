@@ -290,7 +290,6 @@ export default function ParametresPage() {
               <input
                 type="number"
                 min={0}
-                step={50}
                 defaultValue={t.prix_defaut}
                 onBlur={(e) => void modifierPrixTarif(t, e.target.value)}
                 className="w-24 rounded-card border border-gray-300 px-2 py-1.5 text-right text-sm outline-none focus:border-pressci-primary"
@@ -320,7 +319,6 @@ export default function ParametresPage() {
             type="number"
             placeholder="Prix"
             min={0}
-            step={50}
             value={nouveauPrix}
             onChange={(e) => setNouveauPrix(e.target.value)}
             className="w-24 rounded-card border border-gray-300 px-2 py-2 text-sm outline-none focus:border-pressci-primary"
