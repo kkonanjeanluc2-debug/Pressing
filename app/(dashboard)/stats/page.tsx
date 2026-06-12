@@ -1,11 +1,12 @@
 'use client'
 
 import Card from '@/components/ui/Card'
+import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
 import { createClient } from '@/lib/supabase/client'
 import { formatFCFA, toInputDate } from '@/lib/utils'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -37,6 +38,13 @@ interface LigneTicketClient {
   client: { id: string; nom: string } | null
 }
 
+interface DonneesStats {
+  encaissements: LigneEncaissement[]
+  topArticles: Array<{ nom: string; total: number }>
+  topClients: Array<{ nom: string; total: number }>
+  tauxFidelisation: number
+}
+
 const PERIODES: Array<{ id: Periode; label: string }> = [
   { id: 'jour', label: 'Jour' },
   { id: 'semaine', label: 'Semaine' },
@@ -49,13 +57,6 @@ export default function StatsPage() {
   const [periode, setPeriode] = useState<Periode>('semaine')
   const [dateDebut, setDateDebut] = useState(toInputDate(new Date(Date.now() - 30 * 86400_000)))
   const [dateFin, setDateFin] = useState(toInputDate(new Date()))
-
-  const [encaissements, setEncaissements] = useState<LigneEncaissement[]>([])
-  const [topArticles, setTopArticles] = useState<Array<{ nom: string; total: number }>>([])
-  const [topClients, setTopClients] = useState<Array<{ nom: string; total: number }>>([])
-  const [tauxFidelisation, setTauxFidelisation] = useState(0)
-  const [chargement, setChargement] = useState(true)
-  const [erreur, setErreur] = useState<string | null>(null)
 
   // Bornes de la période sélectionnée
   const bornes = useMemo((): { debut: Date; fin: Date } => {
@@ -80,47 +81,43 @@ export default function StatsPage() {
     return { debut, fin }
   }, [periode, dateDebut, dateFin])
 
-  useEffect(() => {
-    if (!pressing) return
-    const supabase = createClient()
-
-    async function charger() {
-      if (!pressing) return
-      setChargement(true)
+  const { donnees, chargement, erreur } = useDonneesCachees<DonneesStats>(
+    pressing
+      ? `stats_${pressing.id}_${periode}_${toInputDate(bornes.debut)}_${toInputDate(bornes.fin)}`
+      : null,
+    async () => {
+      const supabase = createClient()
+      const pressingId = (pressing as NonNullable<typeof pressing>).id
 
       const [enc, articles, ticketsClients, clientsTous] = await Promise.all([
         supabase
           .from('encaissements')
           .select('montant, created_at')
-          .eq('pressing_id', pressing.id)
+          .eq('pressing_id', pressingId)
           .gte('created_at', bornes.debut.toISOString())
           .lte('created_at', bornes.fin.toISOString()),
         supabase
           .from('articles_ticket')
           .select('type_article, quantite, ticket:tickets!inner(pressing_id, date_depot)')
-          .eq('ticket.pressing_id', pressing.id)
+          .eq('ticket.pressing_id', pressingId)
           .gte('ticket.date_depot', bornes.debut.toISOString())
           .lte('ticket.date_depot', bornes.fin.toISOString()),
         supabase
           .from('tickets')
           .select('client:clients(id, nom)')
-          .eq('pressing_id', pressing.id)
+          .eq('pressing_id', pressingId)
           .neq('statut', 'annule')
           .gte('date_depot', bornes.debut.toISOString())
           .lte('date_depot', bornes.fin.toISOString()),
         supabase
           .from('clients')
           .select('nombre_depots')
-          .eq('pressing_id', pressing.id),
+          .eq('pressing_id', pressingId),
       ])
 
       if (enc.error || articles.error || ticketsClients.error || clientsTous.error) {
-        setErreur('Impossible de charger les statistiques. Vérifiez votre réseau.')
-        setChargement(false)
-        return
+        throw enc.error ?? articles.error ?? ticketsClients.error ?? clientsTous.error
       }
-
-      setEncaissements((enc.data ?? []) as LigneEncaissement[])
 
       // Top 5 articles
       const compteArticles = new Map<string, number>()
@@ -130,12 +127,6 @@ export default function StatsPage() {
           (compteArticles.get(ligne.type_article) ?? 0) + ligne.quantite
         )
       }
-      setTopArticles(
-        [...compteArticles.entries()]
-          .map(([nom, total]) => ({ nom, total }))
-          .sort((a, b) => b.total - a.total)
-          .slice(0, 5)
-      )
 
       // Top 5 clients par volume de dépôts
       const compteClients = new Map<string, { nom: string; total: number }>()
@@ -147,21 +138,30 @@ export default function StatsPage() {
           total: (existant?.total ?? 0) + 1,
         })
       }
-      setTopClients(
-        [...compteClients.values()].sort((a, b) => b.total - a.total).slice(0, 5)
-      )
 
       // Taux de fidélisation : clients avec 2+ dépôts
       const tous = (clientsTous.data ?? []) as Array<{ nombre_depots: number }>
       const fideles = tous.filter((c) => c.nombre_depots >= 2).length
-      setTauxFidelisation(tous.length > 0 ? Math.round((fideles / tous.length) * 100) : 0)
 
-      setErreur(null)
-      setChargement(false)
-    }
+      return {
+        encaissements: (enc.data ?? []) as LigneEncaissement[],
+        topArticles: [...compteArticles.entries()]
+          .map(([nom, total]) => ({ nom, total }))
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 5),
+        topClients: [...compteClients.values()]
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 5),
+        tauxFidelisation: tous.length > 0 ? Math.round((fideles / tous.length) * 100) : 0,
+      }
+    },
+    'Impossible de charger les statistiques. Vérifiez votre réseau.'
+  )
 
-    void charger()
-  }, [pressing, bornes])
+  const encaissements = donnees?.encaissements ?? []
+  const topArticles = donnees?.topArticles ?? []
+  const topClients = donnees?.topClients ?? []
+  const tauxFidelisation = donnees?.tauxFidelisation ?? 0
 
   // Agrégation du CA par point du graphique
   const pointsCA = useMemo((): PointCA[] => {
@@ -198,7 +198,7 @@ export default function StatsPage() {
   return (
     <div className="space-y-4 px-4 pt-5">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-pressci-dark">Statistiques</h1>
+        <h1 className="text-xl font-bold text-pressci-dark lg:text-2xl">Rapports</h1>
         <Link href="/caisse" className="text-sm font-semibold text-pressci-primary">
           Caisse du jour →
         </Link>
@@ -264,15 +264,15 @@ export default function StatsPage() {
             <Card className="lg:col-span-2">
               <h2 className="mb-3 text-sm font-semibold text-gray-700">Évolution du CA</h2>
               <div className="h-48 lg:h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={pointsCA} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip
-                    formatter={(valeur) => [formatFCFA(Number(valeur)), 'CA']}
-                    labelStyle={{ color: '#085041' }}
-                  />
-                  <Bar dataKey="montant" fill="#1D9E75" radius={[4, 4, 0, 0]} />
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={pointsCA} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip
+                      formatter={(valeur) => [formatFCFA(Number(valeur)), 'CA']}
+                      labelStyle={{ color: '#085041' }}
+                    />
+                    <Bar dataKey="montant" fill="#1D9E75" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -280,47 +280,47 @@ export default function StatsPage() {
           </div>
 
           <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
-          {/* Top articles */}
-          <Card>
-            <h2 className="mb-3 text-sm font-semibold text-gray-700">Top 5 articles traités</h2>
-            {topArticles.length === 0 ? (
-              <p className="text-sm text-gray-500">Pas encore de données.</p>
-            ) : (
-              <ul className="space-y-2">
-                {topArticles.map((a, i) => (
-                  <li key={a.nom} className="flex items-center justify-between text-sm">
-                    <span>
-                      <span className="mr-2 font-bold text-pressci-primary">{i + 1}.</span>
-                      {a.nom}
-                    </span>
-                    <span className="font-semibold">{a.total} pièces</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+            {/* Top articles */}
+            <Card>
+              <h2 className="mb-3 text-sm font-semibold text-gray-700">Top 5 articles traités</h2>
+              {topArticles.length === 0 ? (
+                <p className="text-sm text-gray-500">Pas encore de données.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {topArticles.map((a, i) => (
+                    <li key={a.nom} className="flex items-center justify-between text-sm">
+                      <span>
+                        <span className="mr-2 font-bold text-pressci-primary">{i + 1}.</span>
+                        {a.nom}
+                      </span>
+                      <span className="font-semibold">{a.total} pièces</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
 
-          {/* Top clients */}
-          <Card>
-            <h2 className="mb-3 text-sm font-semibold text-gray-700">Top 5 clients par volume</h2>
-            {topClients.length === 0 ? (
-              <p className="text-sm text-gray-500">Pas encore de données.</p>
-            ) : (
-              <ul className="space-y-2">
-                {topClients.map((c, i) => (
-                  <li key={c.nom} className="flex items-center justify-between text-sm">
-                    <span>
-                      <span className="mr-2 font-bold text-pressci-primary">{i + 1}.</span>
-                      {c.nom}
-                    </span>
-                    <span className="font-semibold">
-                      {c.total} dépôt{c.total > 1 ? 's' : ''}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+            {/* Top clients */}
+            <Card>
+              <h2 className="mb-3 text-sm font-semibold text-gray-700">Top 5 clients par volume</h2>
+              {topClients.length === 0 ? (
+                <p className="text-sm text-gray-500">Pas encore de données.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {topClients.map((c, i) => (
+                    <li key={c.nom} className="flex items-center justify-between text-sm">
+                      <span>
+                        <span className="mr-2 font-bold text-pressci-primary">{i + 1}.</span>
+                        {c.nom}
+                      </span>
+                      <span className="font-semibold">
+                        {c.total} dépôt{c.total > 1 ? 's' : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
           </div>
 
           {/* Fidélisation */}

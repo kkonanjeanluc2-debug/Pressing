@@ -1,8 +1,8 @@
 'use client'
 
+import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { createClient } from '@/lib/supabase/client'
 import type { StatutTicket, Ticket } from '@/types'
-import { useCallback, useEffect, useState } from 'react'
 
 export type FiltreTickets = 'tous' | 'prets' | 'en_cours' | 'non_payes'
 
@@ -13,52 +13,40 @@ interface UseTicketsResult {
   recharger: () => Promise<void>
 }
 
-/** Liste des tickets du pressing avec articles et client joints. */
+/** Liste des tickets du pressing (affichage instantané via cache). */
 export function useTickets(pressingId: string | null, filtre: FiltreTickets): UseTicketsResult {
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [chargement, setChargement] = useState(true)
-  const [erreur, setErreur] = useState<string | null>(null)
+  const { donnees, chargement, erreur, recharger } = useDonneesCachees<Ticket[]>(
+    pressingId ? `tickets_${pressingId}_${filtre}` : null,
+    async () => {
+      const supabase = createClient()
+      let requete = supabase
+        .from('tickets')
+        .select('*, client:clients(*), articles:articles_ticket(*)')
+        .eq('pressing_id', pressingId as string)
+        .order('date_depot', { ascending: false })
+        .limit(200)
 
-  const charger = useCallback(async () => {
-    if (!pressingId) return
-    const supabase = createClient()
+      if (filtre === 'prets') {
+        requete = requete.eq('statut', 'pret')
+      } else if (filtre === 'en_cours') {
+        requete = requete.in('statut', ['nouveau', 'en_traitement'])
+      }
 
-    let requete = supabase
-      .from('tickets')
-      .select('*, client:clients(*), articles:articles_ticket(*)')
-      .eq('pressing_id', pressingId)
-      .order('date_depot', { ascending: false })
-      .limit(200)
+      const { data, error } = await requete
+      if (error) throw error
 
-    if (filtre === 'prets') {
-      requete = requete.eq('statut', 'pret')
-    } else if (filtre === 'en_cours') {
-      requete = requete.in('statut', ['nouveau', 'en_traitement'])
-    }
-
-    const { data, error } = await requete
-
-    if (error) {
-      setErreur('Impossible de charger les tickets. Vérifiez votre réseau.')
-    } else {
       let resultat = (data ?? []) as Ticket[]
       if (filtre === 'non_payes') {
         resultat = resultat.filter(
           (t) => t.statut !== 'annule' && t.montant_paye < t.montant_total
         )
       }
-      setTickets(resultat)
-      setErreur(null)
-    }
-    setChargement(false)
-  }, [pressingId, filtre])
+      return resultat
+    },
+    'Impossible de charger les tickets. Vérifiez votre réseau.'
+  )
 
-  useEffect(() => {
-    setChargement(true)
-    void charger()
-  }, [charger])
-
-  return { tickets, chargement, erreur, recharger: charger }
+  return { tickets: donnees ?? [], chargement, erreur, recharger }
 }
 
 interface UseTicketResult {
@@ -68,34 +56,24 @@ interface UseTicketResult {
   recharger: () => Promise<void>
 }
 
-/** Détail d'un ticket avec client et articles. */
+/** Détail d'un ticket avec client et articles (affichage instantané via cache). */
 export function useTicket(ticketId: string): UseTicketResult {
-  const [ticket, setTicket] = useState<Ticket | null>(null)
-  const [chargement, setChargement] = useState(true)
-  const [erreur, setErreur] = useState<string | null>(null)
+  const { donnees, chargement, erreur, recharger } = useDonneesCachees<Ticket>(
+    `ticket_${ticketId}`,
+    async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('*, client:clients(*), articles:articles_ticket(*)')
+        .eq('id', ticketId)
+        .maybeSingle()
+      if (error || !data) throw error ?? new Error('introuvable')
+      return data as Ticket
+    },
+    'Ticket introuvable.'
+  )
 
-  const charger = useCallback(async () => {
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('tickets')
-      .select('*, client:clients(*), articles:articles_ticket(*)')
-      .eq('id', ticketId)
-      .maybeSingle()
-
-    if (error || !data) {
-      setErreur('Ticket introuvable.')
-    } else {
-      setTicket(data as Ticket)
-      setErreur(null)
-    }
-    setChargement(false)
-  }, [ticketId])
-
-  useEffect(() => {
-    void charger()
-  }, [charger])
-
-  return { ticket, chargement, erreur, recharger: charger }
+  return { ticket: donnees, chargement, erreur, recharger }
 }
 
 /** Change le statut d'un ticket. Retourne un message d'erreur ou null. */

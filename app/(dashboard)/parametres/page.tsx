@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
 import { usePressing } from '@/hooks/usePressing'
+import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
 import { formatFCFA } from '@/lib/utils'
 import { COMMUNES_ABIDJAN, PLANS, type Abonnement, type Plan, type Tarif } from '@/types'
@@ -157,6 +158,7 @@ export default function ParametresPage() {
 
   async function seDeconnecter() {
     await supabase.auth.signOut()
+    viderCache()
     router.push('/login')
     router.refresh()
   }

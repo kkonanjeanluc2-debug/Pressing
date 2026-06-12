@@ -1,8 +1,8 @@
 'use client'
 
+import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { createClient } from '@/lib/supabase/client'
 import type { Client, Ticket } from '@/types'
-import { useCallback, useEffect, useState } from 'react'
 
 interface UseClientsResult {
   clients: Client[]
@@ -11,35 +11,29 @@ interface UseClientsResult {
   recharger: () => Promise<void>
 }
 
-/** Liste alphabétique des clients du pressing. */
+/** Liste alphabétique des clients du pressing (affichage instantané via cache). */
 export function useClients(pressingId: string | null): UseClientsResult {
-  const [clients, setClients] = useState<Client[]>([])
-  const [chargement, setChargement] = useState(true)
-  const [erreur, setErreur] = useState<string | null>(null)
+  const { donnees, chargement, erreur, recharger } = useDonneesCachees<Client[]>(
+    pressingId ? `clients_${pressingId}` : null,
+    async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('pressing_id', pressingId as string)
+        .order('nom', { ascending: true })
+      if (error) throw error
+      return (data ?? []) as Client[]
+    },
+    'Impossible de charger les clients. Vérifiez votre réseau.'
+  )
 
-  const charger = useCallback(async () => {
-    if (!pressingId) return
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('pressing_id', pressingId)
-      .order('nom', { ascending: true })
+  return { clients: donnees ?? [], chargement, erreur, recharger }
+}
 
-    if (error) {
-      setErreur('Impossible de charger les clients. Vérifiez votre réseau.')
-    } else {
-      setClients((data ?? []) as Client[])
-      setErreur(null)
-    }
-    setChargement(false)
-  }, [pressingId])
-
-  useEffect(() => {
-    void charger()
-  }, [charger])
-
-  return { clients, chargement, erreur, recharger: charger }
+interface DonneesClient {
+  client: Client
+  tickets: Ticket[]
 }
 
 interface UseClientResult {
@@ -50,39 +44,38 @@ interface UseClientResult {
   recharger: () => Promise<void>
 }
 
-/** Fiche client : coordonnées + historique des tickets. */
+/** Fiche client : coordonnées + historique (affichage instantané via cache). */
 export function useClient(clientId: string): UseClientResult {
-  const [client, setClient] = useState<Client | null>(null)
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [chargement, setChargement] = useState(true)
-  const [erreur, setErreur] = useState<string | null>(null)
+  const { donnees, chargement, erreur, recharger } = useDonneesCachees<DonneesClient>(
+    `client_${clientId}`,
+    async () => {
+      const supabase = createClient()
+      const [clientRes, ticketsRes] = await Promise.all([
+        supabase.from('clients').select('*').eq('id', clientId).maybeSingle(),
+        supabase
+          .from('tickets')
+          .select('*, articles:articles_ticket(*)')
+          .eq('client_id', clientId)
+          .order('date_depot', { ascending: false }),
+      ])
+      if (clientRes.error || !clientRes.data) {
+        throw clientRes.error ?? new Error('introuvable')
+      }
+      return {
+        client: clientRes.data as Client,
+        tickets: (ticketsRes.data ?? []) as Ticket[],
+      }
+    },
+    'Client introuvable.'
+  )
 
-  const charger = useCallback(async () => {
-    const supabase = createClient()
-    const [clientRes, ticketsRes] = await Promise.all([
-      supabase.from('clients').select('*').eq('id', clientId).maybeSingle(),
-      supabase
-        .from('tickets')
-        .select('*, articles:articles_ticket(*)')
-        .eq('client_id', clientId)
-        .order('date_depot', { ascending: false }),
-    ])
-
-    if (clientRes.error || !clientRes.data) {
-      setErreur('Client introuvable.')
-    } else {
-      setClient(clientRes.data as Client)
-      setTickets((ticketsRes.data ?? []) as Ticket[])
-      setErreur(null)
-    }
-    setChargement(false)
-  }, [clientId])
-
-  useEffect(() => {
-    void charger()
-  }, [charger])
-
-  return { client, tickets, chargement, erreur, recharger: charger }
+  return {
+    client: donnees?.client ?? null,
+    tickets: donnees?.tickets ?? [],
+    chargement,
+    erreur,
+    recharger,
+  }
 }
 
 /** Recherche de clients par téléphone ou nom (autocomplete). */

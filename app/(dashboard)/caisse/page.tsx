@@ -2,12 +2,12 @@
 
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
+import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
 import { createClient } from '@/lib/supabase/client'
-import { formatDate, formatFCFA, MODE_PAIEMENT_LABELS } from '@/lib/utils'
+import { formatDate, formatFCFA, MODE_PAIEMENT_LABELS, toInputDate } from '@/lib/utils'
 import type { ModePaiement } from '@/types'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 
 interface EncaissementAvecTicket {
   id: string
@@ -15,6 +15,12 @@ interface EncaissementAvecTicket {
   mode_paiement: ModePaiement
   created_at: string
   ticket?: { numero: string; client?: { nom: string } }
+}
+
+interface DonneesCaisse {
+  encaissements: EncaissementAvecTicket[]
+  totalHier: number
+  moyenneSemaine: number
 }
 
 function debutJour(decalageJours = 0): Date {
@@ -26,53 +32,42 @@ function debutJour(decalageJours = 0): Date {
 
 export default function CaissePage() {
   const { pressing } = usePressing()
-  const [encaissements, setEncaissements] = useState<EncaissementAvecTicket[]>([])
-  const [totalHier, setTotalHier] = useState(0)
-  const [moyenneSemaine, setMoyenneSemaine] = useState(0)
-  const [chargement, setChargement] = useState(true)
-  const [erreur, setErreur] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!pressing) return
-    const supabase = createClient()
-
-    async function charger() {
-      if (!pressing) return
+  const { donnees, chargement, erreur } = useDonneesCachees<DonneesCaisse>(
+    pressing ? `caisse_${pressing.id}_${toInputDate(new Date())}` : null,
+    async () => {
+      const supabase = createClient()
       const [jour, semaine] = await Promise.all([
         supabase
           .from('encaissements')
           .select('*, ticket:tickets(numero, client:clients(nom))')
-          .eq('pressing_id', pressing.id)
+          .eq('pressing_id', (pressing as NonNullable<typeof pressing>).id)
           .gte('created_at', debutJour().toISOString())
           .order('created_at', { ascending: false }),
         supabase
           .from('encaissements')
           .select('montant, created_at')
-          .eq('pressing_id', pressing.id)
+          .eq('pressing_id', (pressing as NonNullable<typeof pressing>).id)
           .gte('created_at', debutJour(-7).toISOString())
           .lt('created_at', debutJour().toISOString()),
       ])
-
-      if (jour.error || semaine.error) {
-        setErreur('Impossible de charger la caisse. Vérifiez votre réseau.')
-        setChargement(false)
-        return
-      }
-
-      setEncaissements((jour.data ?? []) as EncaissementAvecTicket[])
+      if (jour.error || semaine.error) throw jour.error ?? semaine.error
 
       const lignes = (semaine.data ?? []) as Array<{ montant: number; created_at: string }>
-      const hier = lignes
+      const totalHier = lignes
         .filter((e) => new Date(e.created_at) >= debutJour(-1))
         .reduce((s, e) => s + e.montant, 0)
-      setTotalHier(hier)
-      setMoyenneSemaine(Math.round(lignes.reduce((s, e) => s + e.montant, 0) / 7))
-      setChargement(false)
-    }
 
-    void charger()
-  }, [pressing])
+      return {
+        encaissements: (jour.data ?? []) as EncaissementAvecTicket[],
+        totalHier,
+        moyenneSemaine: Math.round(lignes.reduce((s, e) => s + e.montant, 0) / 7),
+      }
+    },
+    'Impossible de charger la caisse. Vérifiez votre réseau.'
+  )
 
+  const encaissements = donnees?.encaissements ?? []
   const totalJour = encaissements.reduce((s, e) => s + e.montant, 0)
   const parMode = encaissements.reduce<Partial<Record<ModePaiement, number>>>((acc, e) => {
     acc[e.mode_paiement] = (acc[e.mode_paiement] ?? 0) + e.montant
@@ -112,11 +107,11 @@ export default function CaissePage() {
             <div className="mt-3 flex justify-around border-t border-white/20 pt-3 text-xs">
               <div>
                 <p className="opacity-70">Hier</p>
-                <p className="font-semibold">{formatFCFA(totalHier)}</p>
+                <p className="font-semibold">{formatFCFA(donnees?.totalHier ?? 0)}</p>
               </div>
               <div>
                 <p className="opacity-70">Moyenne / jour (7j)</p>
-                <p className="font-semibold">{formatFCFA(moyenneSemaine)}</p>
+                <p className="font-semibold">{formatFCFA(donnees?.moyenneSemaine ?? 0)}</p>
               </div>
             </div>
           </Card>

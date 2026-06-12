@@ -1,5 +1,6 @@
 'use client'
 
+import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { createClient } from '@/lib/supabase/client'
 import type { Pressing } from '@/types'
 import { useCallback, useEffect, useState } from 'react'
@@ -31,50 +32,31 @@ export function changerPressingActif(id: string): void {
 }
 
 /**
- * Charge les pressings du gérant connecté.
+ * Charge les pressings du gérant connecté (affichage instantané via cache).
  * Un propriétaire peut avoir plusieurs pressings : le pressing « actif »
  * est mémorisé dans le navigateur et partagé entre tous les composants.
  */
 export function usePressing(): UsePressingResult {
-  const [pressings, setPressings] = useState<Pressing[]>([])
   const [actifId, setActifId] = useState<string | null>(lirePressingActif)
-  const [chargement, setChargement] = useState(true)
-  const [erreur, setErreur] = useState<string | null>(null)
-  const [version, setVersion] = useState(0)
 
-  useEffect(() => {
-    let annule = false
-    const supabase = createClient()
-
-    async function charger() {
-      setChargement(true)
+  const { donnees, chargement, erreur, recharger } = useDonneesCachees<Pressing[]>(
+    'pressings',
+    async () => {
+      const supabase = createClient()
       const { data, error } = await supabase
         .from('pressings')
         .select('*')
         .order('created_at', { ascending: true })
-
-      if (annule) return
-      if (error) {
-        setErreur('Impossible de charger votre pressing. Vérifiez votre réseau.')
-      } else {
-        setPressings((data ?? []) as Pressing[])
-        setErreur(null)
-      }
-      setChargement(false)
-    }
-
-    void charger()
-    return () => {
-      annule = true
-    }
-  }, [version])
+      if (error) throw error
+      return (data ?? []) as Pressing[]
+    },
+    'Impossible de charger votre pressing. Vérifiez votre réseau.'
+  )
 
   // Synchronisation du pressing actif entre tous les composants
   useEffect(() => {
     function surChangement(e: Event) {
-      const detail = (e as CustomEvent<string>).detail
-      setActifId(detail)
-      setVersion((v) => v + 1)
+      setActifId((e as CustomEvent<string>).detail)
     }
     window.addEventListener(EVENEMENT_CHANGEMENT, surChangement)
     return () => window.removeEventListener(EVENEMENT_CHANGEMENT, surChangement)
@@ -84,9 +66,9 @@ export function usePressing(): UsePressingResult {
     changerPressingActif(id)
   }, [])
 
+  const pressings = donnees ?? []
   // Pressing actif : celui mémorisé s'il existe encore, sinon le premier
-  const pressing =
-    pressings.find((p) => p.id === actifId) ?? pressings[0] ?? null
+  const pressing = pressings.find((p) => p.id === actifId) ?? pressings[0] ?? null
 
   return {
     pressing,
@@ -94,6 +76,6 @@ export function usePressing(): UsePressingResult {
     chargement,
     erreur,
     changerPressing,
-    recharger: () => setVersion((v) => v + 1),
+    recharger: () => void recharger(),
   }
 }

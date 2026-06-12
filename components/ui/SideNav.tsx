@@ -1,6 +1,7 @@
 'use client'
 
 import PressingSwitcher from '@/components/ui/PressingSwitcher'
+import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -117,6 +118,7 @@ export default function SideNav() {
   async function seDeconnecter() {
     const supabase = createClient()
     await supabase.auth.signOut()
+    viderCache()
     router.push('/login')
     router.refresh()
   }

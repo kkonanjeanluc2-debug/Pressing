@@ -2,6 +2,7 @@
 
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -35,6 +36,8 @@ export default function LoginPage() {
       return
     }
 
+    // Vider le cache d'une éventuelle session précédente
+    viderCache()
     router.push('/')
     router.refresh()
   }

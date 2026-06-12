@@ -1,8 +1,9 @@
 'use client'
 
+import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { createClient } from '@/lib/supabase/client'
 import type { Pressing } from '@/types'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
 export interface ResumePressing {
   pressing: Pressing
@@ -25,26 +26,19 @@ interface UsePressingsResumeResult {
 
 /**
  * Vue d'ensemble chiffrée de tous les pressings du propriétaire
- * (carte « globale » du tableau de bord et page Pressings).
+ * (affichage instantané via cache, rafraîchissement en arrière-plan).
  */
 export function usePressingsResume(pressings: Pressing[]): UsePressingsResumeResult {
-  const [resumes, setResumes] = useState<ResumePressing[]>([])
-  const [chargement, setChargement] = useState(true)
+  const cle = pressings.length > 0 ? `resume_${pressings.map((p) => p.id).join('_')}` : null
 
-  useEffect(() => {
-    if (pressings.length === 0) {
-      setResumes([])
-      setChargement(false)
-      return
-    }
+  const { donnees, chargement } = useDonneesCachees<ResumePressing[]>(
+    cle,
+    async () => {
+      const supabase = createClient()
+      const ids = pressings.map((p) => p.id)
+      const debutJour = new Date()
+      debutJour.setHours(0, 0, 0, 0)
 
-    let annule = false
-    const supabase = createClient()
-    const ids = pressings.map((p) => p.id)
-    const debutJour = new Date()
-    debutJour.setHours(0, 0, 0, 0)
-
-    async function charger() {
       const [enc, tickets] = await Promise.all([
         supabase
           .from('encaissements')
@@ -57,8 +51,7 @@ export function usePressingsResume(pressings: Pressing[]): UsePressingsResumeRes
           .in('pressing_id', ids)
           .neq('statut', 'annule'),
       ])
-
-      if (annule) return
+      if (enc.error || tickets.error) throw enc.error ?? tickets.error
 
       const lignesEnc = (enc.data ?? []) as Array<{ pressing_id: string; montant: number }>
       const lignesTickets = (tickets.data ?? []) as Array<{
@@ -69,34 +62,27 @@ export function usePressingsResume(pressings: Pressing[]): UsePressingsResumeRes
         created_at: string
       }>
 
-      setResumes(
-        pressings.map((pressing) => {
-          const encPressing = lignesEnc.filter((e) => e.pressing_id === pressing.id)
-          const ticketsPressing = lignesTickets.filter((t) => t.pressing_id === pressing.id)
-          return {
-            pressing,
-            ca_jour: encPressing.reduce((s, e) => s + e.montant, 0),
-            depots_jour: ticketsPressing.filter((t) => new Date(t.created_at) >= debutJour)
-              .length,
-            creances: ticketsPressing.reduce(
-              (s, t) => s + Math.max(0, t.montant_total - t.montant_paye),
-              0
-            ),
-            tickets_actifs: ticketsPressing.filter((t) =>
-              ['nouveau', 'en_traitement', 'pret'].includes(t.statut)
-            ).length,
-          }
-        })
-      )
-      setChargement(false)
-    }
+      return pressings.map((pressing) => {
+        const encPressing = lignesEnc.filter((e) => e.pressing_id === pressing.id)
+        const ticketsPressing = lignesTickets.filter((t) => t.pressing_id === pressing.id)
+        return {
+          pressing,
+          ca_jour: encPressing.reduce((s, e) => s + e.montant, 0),
+          depots_jour: ticketsPressing.filter((t) => new Date(t.created_at) >= debutJour).length,
+          creances: ticketsPressing.reduce(
+            (s, t) => s + Math.max(0, t.montant_total - t.montant_paye),
+            0
+          ),
+          tickets_actifs: ticketsPressing.filter((t) =>
+            ['nouveau', 'en_traitement', 'pret'].includes(t.statut)
+          ).length,
+        }
+      })
+    },
+    'Impossible de charger le résumé des pressings.'
+  )
 
-    void charger()
-    return () => {
-      annule = true
-    }
-  }, [pressings])
-
+  const resumes = donnees ?? []
   const totalCaJour = useMemo(() => resumes.reduce((s, r) => s + r.ca_jour, 0), [resumes])
   const totalCreances = useMemo(() => resumes.reduce((s, r) => s + r.creances, 0), [resumes])
 
