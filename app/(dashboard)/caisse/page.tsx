@@ -203,10 +203,16 @@ export default function CaissePage() {
         >
           ←
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold text-pressci-dark">Caisse du jour</h1>
           <p className="text-sm text-gray-500">{formatDate(new Date())}</p>
         </div>
+        <Link
+          href="/comptabilite"
+          className="shrink-0 text-sm font-semibold text-pressci-primary"
+        >
+          Comptabilité →
+        </Link>
       </header>
 
       {/* Filtre par pressing (propriétaire multi-pressings) */}

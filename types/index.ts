@@ -79,6 +79,21 @@ export interface Abonnement {
   created_at: string
 }
 
+export type ModePaiementDepense = 'cash' | 'wave' | 'orange_money' | 'banque'
+
+export interface Depense {
+  id: string
+  pressing_id: string
+  date_depense: string
+  libelle: string
+  /** Code du compte de charge SYSCOHADA (classe 6) */
+  compte: string
+  montant: number
+  mode_paiement: ModePaiementDepense
+  reference: string | null
+  created_at: string
+}
+
 export interface Encaissement {
   id: string
   pressing_id: string
@@ -97,6 +112,7 @@ export interface PermissionsAgent {
   gerer_clients: boolean
   voir_caisse: boolean
   voir_stats: boolean
+  gerer_depenses: boolean
 }
 
 export interface Agent {
@@ -118,6 +134,7 @@ export const PERMISSIONS_DEFAUT: PermissionsAgent = {
   gerer_clients: true,
   voir_caisse: false,
   voir_stats: false,
+  gerer_depenses: false,
 }
 
 export const PERMISSIONS_LABELS: Record<keyof PermissionsAgent, string> = {
@@ -128,6 +145,7 @@ export const PERMISSIONS_LABELS: Record<keyof PermissionsAgent, string> = {
   gerer_clients: 'Gérer les clients',
   voir_caisse: 'Voir la caisse du jour',
   voir_stats: 'Voir les rapports',
+  gerer_depenses: 'Saisir les dépenses (comptabilité)',
 }
 
 export interface DashboardStats {
