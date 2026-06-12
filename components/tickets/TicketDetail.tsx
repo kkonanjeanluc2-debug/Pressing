@@ -63,40 +63,43 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   }
 
   /**
-   * Envoie le ticket en PDF sur le WhatsApp du client :
-   * le PDF est généré, hébergé, et le lien part dans le message.
+   * Envoie le ticket en PDF sur WhatsApp.
+   * - Téléphone : partage natif → le PDF est JOINT directement dans WhatsApp
+   *   (choisir WhatsApp puis le client dans la feuille de partage).
+   * - Ordinateur : le PDF est téléchargé et la discussion WhatsApp du client
+   *   s'ouvre — il reste à le joindre (icône trombone).
    */
   async function envoyerWhatsAppPdf() {
     if (!ticket.client) return
-    setEnvoiWhatsApp(true)
     setErreur(null)
-    // Fenêtre ouverte AVANT l'attente réseau (sinon bloquée par le navigateur)
-    const fenetre = window.open('', '_blank')
+    setInfo(null)
+    setEnvoiWhatsApp(true)
 
-    let texte = messageWhatsAppTicket
-    try {
-      const doc = genererTicketPdf(ticket, pressing)
-      const pdfBase64 = doc.output('datauristring').split(',')[1] ?? ''
-      const res = await fetch('/api/ticket-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticket_id: ticket.id, pdf_base64: pdfBase64 }),
-      })
-      const data = (await res.json()) as { succes: boolean; url?: string }
-      if (data.succes && data.url) {
-        texte = `${messageWhatsAppTicket}\n\n📄 Votre ticket en PDF : ${data.url}`
+    const doc = genererTicketPdf(ticket, pressing)
+    const nomFichier = `ticket-${ticket.numero.replace('#', '')}.pdf`
+    const fichier = new File([doc.output('blob')], nomFichier, { type: 'application/pdf' })
+
+    // Téléphone : le PDF part en pièce jointe via le partage natif
+    if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [fichier] })) {
+      try {
+        await navigator.share({ files: [fichier], text: messageWhatsAppTicket })
+      } catch {
+        // Partage annulé par l'utilisateur : rien à faire
       }
-    } catch {
-      // En cas d'échec d'hébergement : le message part sans le lien PDF
+      setEnvoiWhatsApp(false)
+      return
     }
 
+    // Ordinateur : téléchargement + ouverture de la discussion du client
+    doc.save(nomFichier)
     const tel = ticket.client.telephone.replace(/\D/g, '').replace(/^225/, '')
-    const url = `https://wa.me/225${tel}?text=${encodeURIComponent(texte)}`
-    if (fenetre) {
-      fenetre.location.href = url
-    } else {
-      window.open(url, '_blank')
-    }
+    window.open(
+      `https://wa.me/225${tel}?text=${encodeURIComponent(messageWhatsAppTicket)}`,
+      '_blank'
+    )
+    setInfo(
+      `Le PDF « ${nomFichier} » est téléchargé : joignez-le dans la discussion WhatsApp qui vient de s'ouvrir (icône trombone 📎).`
+    )
     setEnvoiWhatsApp(false)
   }
 
@@ -319,7 +322,8 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         )}
       </div>
       <p className="-mt-2 text-center text-xs text-gray-400">
-        WhatsApp : le client reçoit le message avec son ticket en PDF.
+        WhatsApp : sur téléphone, le PDF est joint directement ; sur ordinateur, il est
+        téléchargé puis à joindre dans la discussion qui s’ouvre.
       </p>
 
       {erreur && (

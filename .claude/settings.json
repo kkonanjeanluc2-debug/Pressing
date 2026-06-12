@@ -24,7 +24,9 @@
       "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" push)",
       "PowerShell(Remove-Item \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\\\\components\\\\ui\\\\PressingSwitcher.tsx\" -Confirm:$false)",
       "PowerShell(Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue)",
-      "PowerShell(npm install jspdf jspdf-autotable --no-audit --no-fund 2>&1)"
+      "PowerShell(npm install jspdf jspdf-autotable --no-audit --no-fund 2>&1)",
+      "PowerShell(Remove-Item -Recurse -Force \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\\\\app\\\\api\\\\ticket-pdf\" -Confirm:$false)",
+      "PowerShell(\"Route ticket-pdf supprim�e\")"
     ]
   }
 }
