@@ -1,0 +1,338 @@
+'use client'
+
+import Card from '@/components/ui/Card'
+import { usePressing } from '@/hooks/usePressing'
+import { createClient } from '@/lib/supabase/client'
+import { formatFCFA, toInputDate } from '@/lib/utils'
+import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+
+type Periode = 'jour' | 'semaine' | 'mois' | 'personnalise'
+
+interface PointCA {
+  label: string
+  montant: number
+}
+
+interface LigneEncaissement {
+  montant: number
+  created_at: string
+}
+
+interface LigneArticle {
+  type_article: string
+  quantite: number
+  ticket: { pressing_id: string; date_depot: string } | null
+}
+
+interface LigneTicketClient {
+  client: { id: string; nom: string } | null
+}
+
+const PERIODES: Array<{ id: Periode; label: string }> = [
+  { id: 'jour', label: 'Jour' },
+  { id: 'semaine', label: 'Semaine' },
+  { id: 'mois', label: 'Mois' },
+  { id: 'personnalise', label: 'Personnalisé' },
+]
+
+export default function StatsPage() {
+  const { pressing } = usePressing()
+  const [periode, setPeriode] = useState<Periode>('semaine')
+  const [dateDebut, setDateDebut] = useState(toInputDate(new Date(Date.now() - 30 * 86400_000)))
+  const [dateFin, setDateFin] = useState(toInputDate(new Date()))
+
+  const [encaissements, setEncaissements] = useState<LigneEncaissement[]>([])
+  const [topArticles, setTopArticles] = useState<Array<{ nom: string; total: number }>>([])
+  const [topClients, setTopClients] = useState<Array<{ nom: string; total: number }>>([])
+  const [tauxFidelisation, setTauxFidelisation] = useState(0)
+  const [chargement, setChargement] = useState(true)
+  const [erreur, setErreur] = useState<string | null>(null)
+
+  // Bornes de la période sélectionnée
+  const bornes = useMemo((): { debut: Date; fin: Date } => {
+    const maintenant = new Date()
+    const fin = new Date(maintenant)
+    fin.setHours(23, 59, 59, 999)
+    const debut = new Date(maintenant)
+    debut.setHours(0, 0, 0, 0)
+
+    if (periode === 'jour') {
+      debut.setDate(debut.getDate() - 13)
+    } else if (periode === 'semaine') {
+      debut.setDate(debut.getDate() - 7 * 8)
+    } else if (periode === 'mois') {
+      debut.setMonth(debut.getMonth() - 5, 1)
+    } else {
+      return {
+        debut: new Date(`${dateDebut}T00:00:00`),
+        fin: new Date(`${dateFin}T23:59:59`),
+      }
+    }
+    return { debut, fin }
+  }, [periode, dateDebut, dateFin])
+
+  useEffect(() => {
+    if (!pressing) return
+    const supabase = createClient()
+
+    async function charger() {
+      if (!pressing) return
+      setChargement(true)
+
+      const [enc, articles, ticketsClients, clientsTous] = await Promise.all([
+        supabase
+          .from('encaissements')
+          .select('montant, created_at')
+          .eq('pressing_id', pressing.id)
+          .gte('created_at', bornes.debut.toISOString())
+          .lte('created_at', bornes.fin.toISOString()),
+        supabase
+          .from('articles_ticket')
+          .select('type_article, quantite, ticket:tickets!inner(pressing_id, date_depot)')
+          .eq('ticket.pressing_id', pressing.id)
+          .gte('ticket.date_depot', bornes.debut.toISOString())
+          .lte('ticket.date_depot', bornes.fin.toISOString()),
+        supabase
+          .from('tickets')
+          .select('client:clients(id, nom)')
+          .eq('pressing_id', pressing.id)
+          .neq('statut', 'annule')
+          .gte('date_depot', bornes.debut.toISOString())
+          .lte('date_depot', bornes.fin.toISOString()),
+        supabase
+          .from('clients')
+          .select('nombre_depots')
+          .eq('pressing_id', pressing.id),
+      ])
+
+      if (enc.error || articles.error || ticketsClients.error || clientsTous.error) {
+        setErreur('Impossible de charger les statistiques. Vérifiez votre réseau.')
+        setChargement(false)
+        return
+      }
+
+      setEncaissements((enc.data ?? []) as LigneEncaissement[])
+
+      // Top 5 articles
+      const compteArticles = new Map<string, number>()
+      for (const ligne of (articles.data ?? []) as unknown as LigneArticle[]) {
+        compteArticles.set(
+          ligne.type_article,
+          (compteArticles.get(ligne.type_article) ?? 0) + ligne.quantite
+        )
+      }
+      setTopArticles(
+        [...compteArticles.entries()]
+          .map(([nom, total]) => ({ nom, total }))
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 5)
+      )
+
+      // Top 5 clients par volume de dépôts
+      const compteClients = new Map<string, { nom: string; total: number }>()
+      for (const ligne of (ticketsClients.data ?? []) as unknown as LigneTicketClient[]) {
+        if (!ligne.client) continue
+        const existant = compteClients.get(ligne.client.id)
+        compteClients.set(ligne.client.id, {
+          nom: ligne.client.nom,
+          total: (existant?.total ?? 0) + 1,
+        })
+      }
+      setTopClients(
+        [...compteClients.values()].sort((a, b) => b.total - a.total).slice(0, 5)
+      )
+
+      // Taux de fidélisation : clients avec 2+ dépôts
+      const tous = (clientsTous.data ?? []) as Array<{ nombre_depots: number }>
+      const fideles = tous.filter((c) => c.nombre_depots >= 2).length
+      setTauxFidelisation(tous.length > 0 ? Math.round((fideles / tous.length) * 100) : 0)
+
+      setErreur(null)
+      setChargement(false)
+    }
+
+    void charger()
+  }, [pressing, bornes])
+
+  // Agrégation du CA par point du graphique
+  const pointsCA = useMemo((): PointCA[] => {
+    const points = new Map<string, number>()
+    const formatPoint = (d: Date): string => {
+      if (periode === 'jour' || periode === 'personnalise') {
+        return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+      }
+      if (periode === 'semaine') {
+        const debutSem = new Date(d)
+        debutSem.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+        return debutSem.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+      }
+      return d.toLocaleDateString('fr-FR', { month: 'short' })
+    }
+
+    // Pré-remplir les points vides pour un graphique continu
+    const curseur = new Date(bornes.debut)
+    while (curseur <= bornes.fin) {
+      points.set(formatPoint(curseur), 0)
+      curseur.setDate(curseur.getDate() + 1)
+    }
+
+    for (const e of encaissements) {
+      const cle = formatPoint(new Date(e.created_at))
+      points.set(cle, (points.get(cle) ?? 0) + e.montant)
+    }
+
+    return [...points.entries()].map(([label, montant]) => ({ label, montant }))
+  }, [encaissements, periode, bornes])
+
+  const totalPeriode = encaissements.reduce((s, e) => s + e.montant, 0)
+
+  return (
+    <div className="space-y-4 px-4 pt-5">
+      <header className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-pressci-dark">Statistiques</h1>
+        <Link href="/caisse" className="text-sm font-semibold text-pressci-primary">
+          Caisse du jour →
+        </Link>
+      </header>
+
+      {/* Sélecteur de période */}
+      <div className="no-scrollbar flex gap-2 overflow-x-auto">
+        {PERIODES.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setPeriode(p.id)}
+            className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium ${
+              periode === p.id
+                ? 'bg-pressci-primary text-white'
+                : 'border border-gray-300 bg-white text-gray-600'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {periode === 'personnalise' && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-xs text-gray-500">Du</label>
+            <input
+              type="date"
+              value={dateDebut}
+              onChange={(e) => setDateDebut(e.target.value)}
+              className="w-full rounded-card border border-gray-300 px-3 py-2.5 outline-none focus:border-pressci-primary"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-gray-500">Au</label>
+            <input
+              type="date"
+              value={dateFin}
+              onChange={(e) => setDateFin(e.target.value)}
+              className="w-full rounded-card border border-gray-300 px-3 py-2.5 outline-none focus:border-pressci-primary"
+            />
+          </div>
+        </div>
+      )}
+
+      {erreur && (
+        <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>
+      )}
+
+      {chargement ? (
+        <div className="flex justify-center py-10">
+          <span className="spinner spinner-dark h-8 w-8" />
+        </div>
+      ) : (
+        <>
+          <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
+            <Card className="flex flex-col justify-center text-center">
+              <p className="text-sm text-gray-500">Chiffre d’affaires de la période</p>
+              <p className="text-2xl font-bold text-pressci-dark">{formatFCFA(totalPeriode)}</p>
+            </Card>
+
+            {/* Graphique d'évolution */}
+            <Card className="lg:col-span-2">
+              <h2 className="mb-3 text-sm font-semibold text-gray-700">Évolution du CA</h2>
+              <div className="h-48 lg:h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={pointsCA} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(valeur) => [formatFCFA(Number(valeur)), 'CA']}
+                    labelStyle={{ color: '#085041' }}
+                  />
+                  <Bar dataKey="montant" fill="#1D9E75" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+
+          <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+          {/* Top articles */}
+          <Card>
+            <h2 className="mb-3 text-sm font-semibold text-gray-700">Top 5 articles traités</h2>
+            {topArticles.length === 0 ? (
+              <p className="text-sm text-gray-500">Pas encore de données.</p>
+            ) : (
+              <ul className="space-y-2">
+                {topArticles.map((a, i) => (
+                  <li key={a.nom} className="flex items-center justify-between text-sm">
+                    <span>
+                      <span className="mr-2 font-bold text-pressci-primary">{i + 1}.</span>
+                      {a.nom}
+                    </span>
+                    <span className="font-semibold">{a.total} pièces</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          {/* Top clients */}
+          <Card>
+            <h2 className="mb-3 text-sm font-semibold text-gray-700">Top 5 clients par volume</h2>
+            {topClients.length === 0 ? (
+              <p className="text-sm text-gray-500">Pas encore de données.</p>
+            ) : (
+              <ul className="space-y-2">
+                {topClients.map((c, i) => (
+                  <li key={c.nom} className="flex items-center justify-between text-sm">
+                    <span>
+                      <span className="mr-2 font-bold text-pressci-primary">{i + 1}.</span>
+                      {c.nom}
+                    </span>
+                    <span className="font-semibold">
+                      {c.total} dépôt{c.total > 1 ? 's' : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          </div>
+
+          {/* Fidélisation */}
+          <Card className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700">Taux de fidélisation</h2>
+              <p className="text-xs text-gray-500">Clients revenus au moins 2 fois</p>
+            </div>
+            <span className="text-2xl font-bold text-pressci-primary">{tauxFidelisation}%</span>
+          </Card>
+        </>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,44 @@
+{
+  "name": "PressCI — Gestion de pressing",
+  "short_name": "PressCI",
+  "description": "Gérez votre pressing depuis votre téléphone : dépôts, clients, caisse, SMS.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E1F5EE",
+  "theme_color": "#0F6E56",
+  "lang": "fr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouveau dépôt",
+      "url": "/tickets/nouveau",
+      "description": "Enregistrer un nouveau dépôt de linge"
+    },
+    {
+      "name": "Caisse du jour",
+      "url": "/caisse",
+      "description": "Voir les encaissements du jour"
+    }
+  ]
+}

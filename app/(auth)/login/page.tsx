@@ -1,0 +1,91 @@
+'use client'
+
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState, type FormEvent } from 'react'
+
+export default function LoginPage() {
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [motDePasse, setMotDePasse] = useState('')
+  const [erreur, setErreur] = useState<string | null>(null)
+  const [chargement, setChargement] = useState(false)
+
+  async function seConnecter(e: FormEvent) {
+    e.preventDefault()
+    setErreur(null)
+    setChargement(true)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password: motDePasse,
+    })
+
+    if (error) {
+      setChargement(false)
+      setErreur(
+        error.message.includes('Invalid login credentials')
+          ? 'Email ou mot de passe incorrect. Vérifiez et réessayez.'
+          : 'Connexion impossible pour le moment. Vérifiez votre réseau et réessayez.'
+      )
+      return
+    }
+
+    router.push('/')
+    router.refresh()
+  }
+
+  return (
+    <main className="flex flex-col justify-center">
+      <div className="mb-10 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pressci-primary text-3xl font-bold text-white">
+          P
+        </div>
+        <h1 className="text-2xl font-bold text-pressci-dark">PressCI</h1>
+        <p className="mt-1 text-gray-500">Votre pressing dans la poche</p>
+      </div>
+
+      <form onSubmit={seConnecter} className="space-y-4">
+        <Input
+          label="Email"
+          type="email"
+          name="email"
+          placeholder="vous@exemple.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          required
+        />
+        <Input
+          label="Mot de passe"
+          type="password"
+          name="password"
+          placeholder="••••••••"
+          value={motDePasse}
+          onChange={(e) => setMotDePasse(e.target.value)}
+          autoComplete="current-password"
+          required
+        />
+
+        {erreur && (
+          <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>
+        )}
+
+        <Button type="submit" pleineLargeur chargement={chargement}>
+          Se connecter
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-gray-600">
+        Pas encore de compte ?{' '}
+        <Link href="/register" className="font-semibold text-pressci-primary">
+          Créer mon pressing
+        </Link>
+      </p>
+    </main>
+  )
+}

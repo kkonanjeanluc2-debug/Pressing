@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pressci-primary: #0f6e56;
+  --pressci-secondary: #1d9e75;
+  --pressci-accent: #9fe1cb;
+  --pressci-dark: #085041;
+  --pressci-light: #e1f5ee;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+  overscroll-behavior-y: contain;
+}
+
+/* Champ de saisie : éviter le zoom iOS/Android sur focus */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* Masquer la scrollbar des filtres horizontaux */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animation du spinner de chargement */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spinner {
+  @apply inline-block h-5 w-5 rounded-full border-2 border-white/40 border-t-white;
+  animation: spin 0.7s linear infinite;
+}
+.spinner-dark {
+  @apply border-pressci-primary/30 border-t-pressci-primary;
+}
+
+/* Zone safe area pour la bottom nav (iPhone / Android gestes) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
