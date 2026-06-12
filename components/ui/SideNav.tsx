@@ -142,7 +142,7 @@ export default function SideNav() {
   return (
     <aside
       className={cn(
-        'sticky top-0 hidden h-screen shrink-0 flex-col bg-pressci-dark text-pressci-light transition-all lg:flex',
+        'sticky top-0 hidden h-screen shrink-0 flex-col bg-pressci-dark text-pressci-light transition-all print:hidden lg:flex',
         reduite ? 'w-20' : 'w-64'
       )}
     >

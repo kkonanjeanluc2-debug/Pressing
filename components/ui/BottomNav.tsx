@@ -60,7 +60,7 @@ export default function BottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white pb-safe lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white pb-safe print:hidden lg:hidden">
       <div className="grid grid-cols-4">
         {ONGLETS.map((onglet) => {
           const actif = onglet.actif(pathname)

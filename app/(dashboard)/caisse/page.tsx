@@ -6,13 +6,20 @@ import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
 import { createClient } from '@/lib/supabase/client'
-import { formatDate, formatFCFA, MODE_PAIEMENT_LABELS, toInputDate } from '@/lib/utils'
-import type { ModePaiement } from '@/types'
+import {
+  formatDate,
+  formatFCFA,
+  formatHeure,
+  MODE_PAIEMENT_LABELS,
+  toInputDate,
+} from '@/lib/utils'
+import type { ModePaiement, Pressing } from '@/types'
 import Link from 'next/link'
 import { useState } from 'react'
 
 interface EncaissementAvecTicket {
   id: string
+  pressing_id: string
   montant: number
   mode_paiement: ModePaiement
   created_at: string
@@ -32,9 +39,29 @@ function debutJour(decalageJours = 0): Date {
   return d
 }
 
+function LigneEncaissement({ e }: { e: EncaissementAvecTicket }) {
+  return (
+    <div className="flex items-center justify-between rounded-card border border-gray-200 bg-white p-3 print:rounded-none print:border-x-0 print:border-t-0 print:px-0">
+      <div>
+        <p className="text-sm font-medium text-gray-800">
+          {e.ticket?.numero ?? ''} · {e.ticket?.client?.nom ?? 'Client'}
+        </p>
+        <p className="text-xs text-gray-500">
+          {new Date(e.created_at).toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}{' '}
+          · {MODE_PAIEMENT_LABELS[e.mode_paiement]}
+        </p>
+      </div>
+      <span className="font-semibold text-green-700">+{formatFCFA(e.montant)}</span>
+    </div>
+  )
+}
+
 export default function CaissePage() {
   const { pressings } = usePressing()
-  const { peut, chargement: chargementProfil } = useProfil()
+  const { role, agent, peut, chargement: chargementProfil } = useProfil()
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
 
   const idsTous = pressings.map((p) => p.id)
@@ -96,8 +123,76 @@ export default function CaissePage() {
     return acc
   }, {})
 
+  // Pressing affiché en en-tête du document : celui sélectionné, ou l'unique
+  // pressing visible (cas de l'agent / propriétaire mono-pressing)
+  const pressingSelectionne: Pressing | null =
+    pressingFiltre !== 'tous'
+      ? pressings.find((p) => p.id === pressingFiltre) ?? null
+      : pressings.length === 1
+        ? pressings[0] ?? null
+        : null
+
+  // Vue globale du propriétaire : encaissements classés par pressing
+  const groupesParPressing = pressingSelectionne
+    ? null
+    : pressings
+        .map((p) => ({
+          pressing: p,
+          lignes: encaissements.filter((e) => e.pressing_id === p.id),
+        }))
+        .filter((g) => g.lignes.length > 0)
+
   return (
-    <div className="mx-auto max-w-3xl space-y-4 px-4 pt-5 print:px-0">
+    <div className="mx-auto max-w-3xl space-y-4 px-4 pt-5 print:max-w-none print:space-y-3 print:px-0 print:pt-0">
+      {/* ====== En-tête du document imprimé ====== */}
+      <div className="hidden border-b-2 border-pressci-dark pb-4 print:block">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="mb-1 flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-primary text-base font-bold text-white">
+                P
+              </span>
+              <span className="text-sm font-bold text-pressci-dark">
+                PressCI — Gestion de pressing
+              </span>
+            </div>
+            {pressingSelectionne ? (
+              <>
+                <h1 className="text-2xl font-bold text-gray-900">{pressingSelectionne.nom}</h1>
+                <p className="text-sm text-gray-600">
+                  {[pressingSelectionne.adresse, pressingSelectionne.commune]
+                    .filter(Boolean)
+                    .join(', ') || ''}
+                </p>
+                {pressingSelectionne.telephone && (
+                  <p className="text-sm text-gray-600">Tél : {pressingSelectionne.telephone}</p>
+                )}
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Tous les pressings ({pressings.length})
+                </h1>
+                <p className="text-sm text-gray-600">
+                  {pressings.map((p) => p.nom).join(' · ')}
+                </p>
+              </>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold uppercase tracking-wide text-pressci-dark">
+              Rapport de caisse
+            </p>
+            <p className="text-sm text-gray-600">{formatDate(new Date())}</p>
+            <p className="text-xs text-gray-500">
+              Édité à {formatHeure(new Date())}
+              {role === 'agent' && agent ? ` par ${agent.nom} (agent)` : ' par le propriétaire'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ====== En-tête écran ====== */}
       <header className="flex items-center gap-3 print:hidden">
         <Link
           href="/"
@@ -131,7 +226,9 @@ export default function CaissePage() {
       )}
 
       {erreur && (
-        <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>
+        <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">
+          {erreur}
+        </p>
       )}
 
       {chargement ? (
@@ -141,10 +238,10 @@ export default function CaissePage() {
       ) : (
         <>
           {/* Total du jour */}
-          <Card className="bg-pressci-primary text-center text-white">
+          <Card className="bg-pressci-primary text-center text-white print:border print:border-gray-300 print:bg-transparent print:text-gray-900">
             <p className="text-sm opacity-80">Total encaissé aujourd’hui</p>
             <p className="text-3xl font-bold">{formatFCFA(totalJour)}</p>
-            <div className="mt-3 flex justify-around border-t border-white/20 pt-3 text-xs">
+            <div className="mt-3 flex justify-around border-t border-white/20 pt-3 text-xs print:border-gray-200">
               <div>
                 <p className="opacity-70">Hier</p>
                 <p className="font-semibold">{formatFCFA(donnees?.totalHier ?? 0)}</p>
@@ -169,44 +266,87 @@ export default function CaissePage() {
           </div>
 
           {/* Liste des encaissements */}
-          <section>
-            <h2 className="mb-2 text-sm font-semibold text-gray-700">
-              Encaissements ({encaissements.length})
-            </h2>
-            {encaissements.length === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-500">
-                Aucun encaissement aujourd’hui pour l’instant.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {encaissements.map((e) => (
-                  <div
-                    key={e.id}
-                    className="flex items-center justify-between rounded-card border border-gray-200 bg-white p-3"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">
-                        {e.ticket?.numero ?? ''} · {e.ticket?.client?.nom ?? 'Client'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(e.created_at).toLocaleTimeString('fr-FR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}{' '}
-                        · {MODE_PAIEMENT_LABELS[e.mode_paiement]}
-                      </p>
+          {encaissements.length === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-500">
+              Aucun encaissement aujourd’hui pour l’instant.
+            </p>
+          ) : groupesParPressing ? (
+            /* ---- Vue globale : classée par pressing avec sous-totaux ---- */
+            <div className="space-y-4">
+              {groupesParPressing.map(({ pressing, lignes }) => {
+                const sousTotal = lignes.reduce((s, e) => s + e.montant, 0)
+                return (
+                  <section key={pressing.id}>
+                    <div className="mb-2 flex items-center justify-between border-b-2 border-pressci-primary/30 pb-1">
+                      <h2 className="text-sm font-bold text-pressci-dark">
+                        🏪 {pressing.nom}
+                        {pressing.commune ? (
+                          <span className="ml-1 font-normal text-gray-500">
+                            — {pressing.commune}
+                          </span>
+                        ) : null}
+                      </h2>
+                      <span className="text-xs text-gray-500">
+                        {lignes.length} encaissement{lignes.length > 1 ? 's' : ''}
+                      </span>
                     </div>
-                    <span className="font-semibold text-green-700">+{formatFCFA(e.montant)}</span>
-                  </div>
+                    <div className="space-y-2 print:space-y-0">
+                      {lignes.map((e) => (
+                        <LigneEncaissement key={e.id} e={e} />
+                      ))}
+                    </div>
+                    <p className="mt-2 text-right text-sm font-bold text-pressci-dark">
+                      Sous-total {pressing.nom} : {formatFCFA(sousTotal)}
+                    </p>
+                  </section>
+                )
+              })}
+            </div>
+          ) : (
+            /* ---- Vue d'un seul pressing ---- */
+            <section>
+              <h2 className="mb-2 text-sm font-semibold text-gray-700">
+                Encaissements ({encaissements.length})
+              </h2>
+              <div className="space-y-2 print:space-y-0">
+                {encaissements.map((e) => (
+                  <LigneEncaissement key={e.id} e={e} />
                 ))}
               </div>
-            )}
-          </section>
+            </section>
+          )}
+
+          {/* ====== Pied du document imprimé : signatures ====== */}
+          <div className="hidden pt-12 print:block">
+            <div className="flex justify-between gap-10">
+              <div className="flex-1">
+                <p className="mb-10 text-xs font-semibold uppercase text-gray-500">
+                  {role === 'agent' ? 'Signature de l’agent' : 'Signature du caissier'}
+                </p>
+                <div className="border-t border-gray-400" />
+              </div>
+              <div className="flex-1">
+                <p className="mb-10 text-xs font-semibold uppercase text-gray-500">
+                  Visa du propriétaire
+                </p>
+                <div className="border-t border-gray-400" />
+              </div>
+            </div>
+            <p className="mt-6 text-center text-[10px] text-gray-400">
+              Document généré par PressCI le {formatDate(new Date())} à {formatHeure(new Date())} —
+              www.pressci.app
+            </p>
+          </div>
 
           <div className="print:hidden">
             <Button pleineLargeur variante="outline" onClick={() => window.print()}>
               🧾 Clôturer la journée (imprimer / PDF)
             </Button>
+            {pressings.length > 1 && (
+              <p className="mt-1 text-center text-xs text-gray-400">
+                Astuce : choisissez un pressing dans le filtre pour télécharger sa caisse seule.
+              </p>
+            )}
           </div>
         </>
       )}
