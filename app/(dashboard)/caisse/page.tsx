@@ -1,7 +1,6 @@
 'use client'
 
 import Button from '@/components/ui/Button'
-import Card from '@/components/ui/Card'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
@@ -240,8 +239,9 @@ export default function CaissePage() {
         </div>
       ) : (
         <>
-          {/* Total du jour */}
-          <Card className="border-pressci-primary bg-pressci-primary text-center text-white">
+          {/* Total du jour — div simple pour éviter le conflit avec le fond
+              blanc de Card (le texte blanc devenait invisible à l'impression) */}
+          <div className="rounded-card bg-pressci-primary p-4 text-center text-white">
             <p className="text-sm opacity-80">Total encaissé aujourd’hui</p>
             <p className="text-3xl font-bold">{formatFCFA(totalJour)}</p>
             <div className="mt-3 flex justify-around border-t border-white/20 pt-3 text-xs">
@@ -254,7 +254,7 @@ export default function CaissePage() {
                 <p className="font-semibold">{formatFCFA(donnees?.moyenneSemaine ?? 0)}</p>
               </div>
             </div>
-          </Card>
+          </div>
 
           {/* Totaux par mode de paiement */}
           <div className="grid grid-cols-3 gap-3">
@@ -265,10 +265,10 @@ export default function CaissePage() {
                 { mode: 'orange_money' as ModePaiement, classes: 'border-orange-200 bg-orange-50', texte: 'text-orange-800' },
               ]
             ).map(({ mode, classes, texte }) => (
-              <Card key={mode} className={`text-center ${classes}`}>
+              <div key={mode} className={`rounded-card border p-4 text-center ${classes}`}>
                 <p className={`text-xs ${texte} opacity-80`}>{MODE_PAIEMENT_LABELS[mode]}</p>
                 <p className={`text-sm font-bold ${texte}`}>{formatFCFA(parMode[mode] ?? 0)}</p>
-              </Card>
+              </div>
             ))}
           </div>
 
