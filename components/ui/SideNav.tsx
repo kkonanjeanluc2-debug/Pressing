@@ -1,5 +1,6 @@
 'use client'
 
+import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
 import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
@@ -118,6 +119,7 @@ export default function SideNav() {
   const pathname = usePathname()
   const router = useRouter()
   const { role, agent, peut } = useProfil()
+  const { pressing } = usePressing()
   const [reduite, setReduite] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
 
@@ -215,6 +217,11 @@ export default function SideNav() {
           </div>
           {!reduite && (
             <div className="min-w-0">
+              {role === 'agent' && pressing && (
+                <p className="truncate text-xs font-bold uppercase tracking-wide text-pressci-accent">
+                  🏪 {pressing.nom}
+                </p>
+              )}
               <p className="truncate text-sm font-semibold text-white">
                 {role === 'agent' ? agent?.nom ?? '…' : email ?? '…'}
               </p>
