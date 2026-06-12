@@ -173,7 +173,7 @@ export const PERMISSIONS_LABELS: Record<keyof PermissionsAgent, string> = {
   creer_tickets: 'Créer des dépôts',
   changer_statut: 'Changer le statut des tickets',
   encaisser: 'Encaisser les paiements',
-  envoyer_sms: 'Envoyer des SMS aux clients',
+  envoyer_sms: 'Notifier les clients (WhatsApp/SMS)',
   gerer_clients: 'Gérer les clients',
   gerer_vetements: 'Ajouter/modifier les vêtements',
   voir_caisse: 'Voir la caisse du jour',

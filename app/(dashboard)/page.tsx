@@ -210,7 +210,7 @@ export default function DashboardPage() {
             ))}
           </div>
           <p className="mt-1 text-xs text-red-600">
-            Pensez à envoyer le SMS « linge prêt » pour libérer vos portants.
+            Pensez à notifier les clients sur WhatsApp (« linge prêt ») pour libérer vos portants.
           </p>
         </div>
       )}

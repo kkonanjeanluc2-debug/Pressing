@@ -43,7 +43,6 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   const [erreur, setErreur] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
   const [modalEncaissement, setModalEncaissement] = useState(false)
-  const [messageWhatsApp, setMessageWhatsApp] = useState<string | null>(null)
   const [envoiWhatsApp, setEnvoiWhatsApp] = useState(false)
   const [guideWhatsApp, setGuideWhatsApp] = useState(false)
 
@@ -126,30 +125,27 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
     setEnCours(false)
   }
 
-  async function envoyerSms() {
-    setEnCours(true)
+  /**
+   * Notifie le client sur SON WhatsApp : la discussion s'ouvre avec le
+   * message « linge prêt », et le ticket est marqué comme notifié.
+   */
+  async function notifierWhatsApp() {
+    if (!ticket.client) return
     setErreur(null)
     setInfo(null)
-    setMessageWhatsApp(null)
 
-    try {
-      const res = await fetch('/api/sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticket_id: ticket.id }),
-      })
-      const data = (await res.json()) as { succes: boolean; erreur?: string }
+    const tel = ticket.client.telephone.replace(/\D/g, '').replace(/^225/, '')
+    window.open(`https://wa.me/225${tel}?text=${encodeURIComponent(smsTexte)}`, '_blank')
 
-      if (data.succes) {
-        setInfo('SMS envoyé au client ✅')
-        await recharger()
-      } else {
-        setErreur("Le SMS n'est pas parti. Vous pouvez envoyer le message par WhatsApp :")
-        setMessageWhatsApp(smsTexte)
-      }
-    } catch {
-      setErreur("Le SMS n'est pas parti. Vous pouvez envoyer le message par WhatsApp :")
-      setMessageWhatsApp(smsTexte)
+    setEnCours(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('tickets')
+      .update({ sms_envoye: true, sms_envoye_at: new Date().toISOString() })
+      .eq('id', ticket.id)
+    if (!error) {
+      setInfo('Client notifié sur WhatsApp ✅')
+      await recharger()
     }
     setEnCours(false)
   }
@@ -303,7 +299,8 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
 
         {ticket.sms_envoye && (
           <p className="mt-3 text-xs text-gray-400">
-            SMS envoyé{ticket.sms_envoye_at ? ` le ${formatDateHeure(ticket.sms_envoye_at)}` : ''} ✓
+            Client notifié
+            {ticket.sms_envoye_at ? ` le ${formatDateHeure(ticket.sms_envoye_at)}` : ''} ✓
           </p>
         )}
       </Card>
@@ -347,32 +344,6 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         <p className="rounded-card bg-green-50 px-3 py-2 text-sm text-green-700">{info}</p>
       )}
 
-      {/* Message WhatsApp de secours si le SMS échoue */}
-      {messageWhatsApp && ticket.client && (
-        <Card className="space-y-2">
-          <p className="rounded-card bg-gray-50 px-3 py-2 text-sm text-gray-700">{messageWhatsApp}</p>
-          <div className="flex gap-2">
-            <Button
-              variante="outline"
-              className="flex-1"
-              onClick={() => void navigator.clipboard.writeText(messageWhatsApp)}
-            >
-              Copier
-            </Button>
-            <a
-              className="flex-1"
-              href={`https://wa.me/225${ticket.client.telephone.replace(/\D/g, '')}?text=${encodeURIComponent(messageWhatsApp)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variante="secondary" pleineLargeur>
-                Ouvrir WhatsApp
-              </Button>
-            </a>
-          </div>
-        </Card>
-      )}
-
       {/* ---- Actions selon le statut (et les permissions de l'agent) ---- */}
       <div className="space-y-2">
         {ticket.statut === 'nouveau' && peut('changer_statut') && (
@@ -390,9 +361,14 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         {ticket.statut === 'pret' && (
           <>
             {!ticket.sms_envoye && peut('envoyer_sms') && (
-              <Button pleineLargeur chargement={enCours} variante="secondary" onClick={() => void envoyerSms()}>
-                📱 Notifier le client par SMS
-              </Button>
+              <button
+                type="button"
+                disabled={enCours}
+                onClick={() => void notifierWhatsApp()}
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-card bg-[#25D366] px-4 py-3 text-base font-semibold text-white active:brightness-90 disabled:opacity-60"
+              >
+                💬 Notifier le client sur WhatsApp
+              </button>
             )}
             {peut('changer_statut') && (resteAPayer === 0 || peut('encaisser')) && (
               <Button pleineLargeur chargement={enCours} onClick={() => void marquerRecupereSansEncaissement()}>
