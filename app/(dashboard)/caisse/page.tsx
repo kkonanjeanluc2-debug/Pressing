@@ -239,19 +239,20 @@ export default function CaissePage() {
         </div>
       ) : (
         <>
-          {/* Total du jour — div simple pour éviter le conflit avec le fond
-              blanc de Card (le texte blanc devenait invisible à l'impression) */}
-          <div className="rounded-card bg-pressci-primary p-4 text-center text-white">
-            <p className="text-sm opacity-80">Total encaissé aujourd’hui</p>
-            <p className="text-3xl font-bold">{formatFCFA(totalJour)}</p>
-            <div className="mt-3 flex justify-around border-t border-white/20 pt-3 text-xs">
+          {/* Total du jour — fond blanc, montant en couleur */}
+          <div className="rounded-card border border-gray-200 bg-white p-4 text-center">
+            <p className="text-sm text-gray-500">Total encaissé aujourd’hui</p>
+            <p className="text-3xl font-bold text-pressci-primary">{formatFCFA(totalJour)}</p>
+            <div className="mt-3 flex justify-around border-t border-gray-100 pt-3 text-xs">
               <div>
-                <p className="opacity-70">Hier</p>
-                <p className="font-semibold">{formatFCFA(donnees?.totalHier ?? 0)}</p>
+                <p className="text-gray-400">Hier</p>
+                <p className="font-semibold text-gray-700">{formatFCFA(donnees?.totalHier ?? 0)}</p>
               </div>
               <div>
-                <p className="opacity-70">Moyenne / jour (7j)</p>
-                <p className="font-semibold">{formatFCFA(donnees?.moyenneSemaine ?? 0)}</p>
+                <p className="text-gray-400">Moyenne / jour (7j)</p>
+                <p className="font-semibold text-gray-700">
+                  {formatFCFA(donnees?.moyenneSemaine ?? 0)}
+                </p>
               </div>
             </div>
           </div>
