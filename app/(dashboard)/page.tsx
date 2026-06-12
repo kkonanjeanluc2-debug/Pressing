@@ -83,7 +83,13 @@ export default function DashboardPage() {
       )}
 
       {/* KPI du pressing actif */}
-      {stats && <KpiGrid stats={stats} />}
+      {stats && (
+        <KpiGrid
+          stats={stats}
+          depotsJour={resumes.find((r) => r.pressing.id === pressing.id)?.depots_jour ?? 0}
+          nbPressings={pressings.length}
+        />
+      )}
 
       {/* CA global du jour, détaillé par pressing */}
       {pressings.length > 1 && (
