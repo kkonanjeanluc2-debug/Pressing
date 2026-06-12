@@ -2,6 +2,7 @@
 
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
+import { useSuperAdmin } from '@/hooks/useSuperAdmin'
 import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -120,6 +121,7 @@ export default function SideNav() {
   const router = useRouter()
   const { role, agent, peut } = useProfil()
   const { pressing } = usePressing()
+  const { estAdmin } = useSuperAdmin()
   const [reduite, setReduite] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
 
@@ -207,6 +209,26 @@ export default function SideNav() {
             </Link>
           )
         })}
+
+        {/* Espace super administrateur de la plateforme */}
+        {estAdmin && (
+          <Link
+            href="/admin"
+            title="Administration"
+            className={cn(
+              'relative mt-2 flex items-center gap-3 rounded-card border border-pressci-accent/30 px-3 py-2.5 text-sm font-medium transition-colors',
+              reduite && 'justify-center px-0',
+              pathname.startsWith('/admin')
+                ? 'bg-pressci-primary text-white'
+                : 'text-pressci-accent hover:bg-white/10'
+            )}
+          >
+            <svg className={ICONE} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            {!reduite && 'Admin'}
+          </Link>
+        )}
       </nav>
 
       {/* Profil + actions */}
