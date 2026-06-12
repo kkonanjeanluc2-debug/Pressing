@@ -224,8 +224,8 @@ export default function DashboardPage() {
         <EcheancesWidget tickets={tickets} />
       </div>
 
-      {/* Derniers dépôts avec statut en direct */}
-      <ActiviteRecente tickets={tickets} />
+      {/* Derniers dépôts avec statut en direct, organisés par pressing */}
+      <ActiviteRecente tickets={tickets} pressings={pressings} />
 
       {/* Bouton flottant Nouveau dépôt — mobile uniquement */}
       {peut('creer_tickets') && (
