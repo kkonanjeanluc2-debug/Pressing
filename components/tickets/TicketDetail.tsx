@@ -11,8 +11,10 @@ import {
   formatDate,
   formatDateHeure,
   formatFCFA,
+  formatHeure,
   MODE_PAIEMENT_LABELS,
   messageSmsPret,
+  STATUT_LABELS,
 } from '@/lib/utils'
 import type { ModePaiement, Pressing, Ticket } from '@/types'
 import { useState } from 'react'
@@ -33,6 +35,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   const [info, setInfo] = useState<string | null>(null)
   const [modalEncaissement, setModalEncaissement] = useState(false)
   const [messageWhatsApp, setMessageWhatsApp] = useState<string | null>(null)
+  const [formatImpression, setFormatImpression] = useState<'a4' | 'recu'>('a4')
 
   // Modal d'encaissement
   const resteAPayer = ticket.montant_total - ticket.montant_paye
@@ -41,6 +44,26 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
 
   const enRetard = estEnRetard(ticket.date_prevue, ticket.statut)
   const smsTexte = messageSmsPret(ticket.client?.nom ?? 'cher client', pressing.nom, ticket.numero)
+  const nbPieces = (ticket.articles ?? []).reduce((s, a) => s + a.quantite, 0)
+
+  /** Récapitulatif du ticket envoyé sur le WhatsApp du client. */
+  const messageWhatsAppTicket =
+    ticket.statut === 'pret'
+      ? smsTexte
+      : `Bonjour ${ticket.client?.nom ?? ''}, votre dépôt ${ticket.numero} au ${pressing.nom} : ` +
+        `${nbPieces} pièce${nbPieces > 1 ? 's' : ''}, total ${formatFCFA(ticket.montant_total)}` +
+        (resteAPayer > 0 ? ` (reste à payer ${formatFCFA(resteAPayer)})` : '') +
+        `. Retrait prévu le ${formatDate(ticket.date_prevue)}. Merci de votre confiance !`
+
+  const lienWhatsApp = ticket.client
+    ? `https://wa.me/225${ticket.client.telephone.replace(/\D/g, '').replace(/^225/, '')}?text=${encodeURIComponent(messageWhatsAppTicket)}`
+    : null
+
+  /** Lance l'impression dans le format choisi (PDF via le navigateur). */
+  function imprimer(format: 'a4' | 'recu') {
+    setFormatImpression(format)
+    setTimeout(() => window.print(), 150)
+  }
 
   async function changerStatut(statut: 'en_traitement' | 'pret' | 'recupere' | 'annule') {
     setEnCours(true)
@@ -131,7 +154,15 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   }
 
   return (
-    <div className="space-y-4">
+    <>
+    {/* Format de page selon le type d'export */}
+    {formatImpression === 'recu' ? (
+      <style>{`@media print { @page { size: 80mm auto; margin: 4mm; } }`}</style>
+    ) : (
+      <style>{`@media print { @page { size: A4; margin: 12mm; } }`}</style>
+    )}
+
+    <div className="space-y-4 print:hidden">
       {nouveauticket && (
         <div className="rounded-card border border-green-300 bg-green-50 px-3 py-2 text-sm font-medium text-green-800">
           ✅ Dépôt enregistré ! Vous pouvez notifier le client par SMS quand le linge sera prêt.
@@ -228,6 +259,34 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
           </p>
         )}
       </Card>
+
+      {/* ---- Export et partage ---- */}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          onClick={() => imprimer('a4')}
+          className="rounded-card border border-pressci-primary bg-white px-2 py-2.5 text-sm font-semibold text-pressci-primary active:bg-pressci-light"
+        >
+          📄 PDF A4
+        </button>
+        <button
+          type="button"
+          onClick={() => imprimer('recu')}
+          className="rounded-card border border-pressci-primary bg-white px-2 py-2.5 text-sm font-semibold text-pressci-primary active:bg-pressci-light"
+        >
+          🧾 Reçu caisse
+        </button>
+        {lienWhatsApp && (
+          <a
+            href={lienWhatsApp}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center rounded-card bg-[#25D366] px-2 py-2.5 text-sm font-semibold text-white active:brightness-90"
+          >
+            💬 WhatsApp
+          </a>
+        )}
+      </div>
 
       {erreur && (
         <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>
@@ -381,5 +440,190 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         </div>
       )}
     </div>
+
+    {/* ================= GABARIT A4 (impression uniquement) ================= */}
+    {formatImpression === 'a4' && (
+      <div className="hidden print:block">
+        {/* En-tête */}
+        <div className="flex items-start justify-between rounded-card bg-pressci-dark p-5 text-white">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-accent text-base font-bold text-pressci-dark">
+                P
+              </span>
+              <span className="text-sm font-semibold text-pressci-accent">
+                PressCI — Gestion de pressing
+              </span>
+            </div>
+            <h1 className="text-2xl font-bold text-white">{pressing.nom}</h1>
+            <p className="text-sm text-pressci-light/90">
+              {[pressing.adresse, pressing.commune].filter(Boolean).join(', ')}
+            </p>
+            {pressing.telephone && (
+              <p className="text-sm text-pressci-light/90">Tél : {pressing.telephone}</p>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold uppercase tracking-wide text-pressci-accent">
+              Ticket de dépôt
+            </p>
+            <p className="text-3xl font-bold text-white">{ticket.numero}</p>
+            <p className="text-xs text-pressci-light/80">
+              Édité le {formatDate(new Date())} à {formatHeure(new Date())}
+            </p>
+          </div>
+        </div>
+        <div className="mt-1.5 h-1.5 rounded-full bg-pressci-accent" />
+
+        {/* Client et dates */}
+        <div className="mt-4 grid grid-cols-2 gap-4">
+          <div className="rounded-card border border-gray-200 p-3">
+            <p className="text-xs font-semibold uppercase text-gray-400">Client</p>
+            <p className="text-base font-bold text-gray-900">{ticket.client?.nom}</p>
+            <p className="text-sm text-gray-600">{ticket.client?.telephone}</p>
+          </div>
+          <div className="rounded-card border border-gray-200 p-3 text-sm">
+            <p>
+              <span className="text-gray-500">Déposé le : </span>
+              <span className="font-medium">{formatDateHeure(ticket.date_depot)}</span>
+            </p>
+            <p>
+              <span className="text-gray-500">Retrait prévu : </span>
+              <span className="font-medium">{formatDate(ticket.date_prevue)}</span>
+            </p>
+            {ticket.date_recuperation && (
+              <p>
+                <span className="text-gray-500">Récupéré le : </span>
+                <span className="font-semibold text-pressci-primary">
+                  {formatDateHeure(ticket.date_recuperation)}
+                </span>
+              </p>
+            )}
+            <p>
+              <span className="text-gray-500">Statut : </span>
+              <span className="font-semibold">{STATUT_LABELS[ticket.statut]}</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Articles */}
+        <table className="mt-4 w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-pressci-primary text-left text-white">
+              <th className="rounded-l px-3 py-2 font-semibold">Article</th>
+              <th className="px-3 py-2 text-center font-semibold">Qté</th>
+              <th className="px-3 py-2 text-right font-semibold">Prix unitaire</th>
+              <th className="rounded-r px-3 py-2 text-right font-semibold">Sous-total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(ticket.articles ?? []).map((a) => (
+              <tr key={a.id} className="border-b border-gray-200">
+                <td className="px-3 py-2">{a.type_article}</td>
+                <td className="px-3 py-2 text-center">{a.quantite}</td>
+                <td className="px-3 py-2 text-right">{formatFCFA(a.prix_unitaire)}</td>
+                <td className="px-3 py-2 text-right font-medium">{formatFCFA(a.sous_total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Totaux */}
+        <div className="mt-4 ml-auto w-72 space-y-1 text-sm">
+          <div className="flex justify-between rounded-card bg-pressci-light px-3 py-2">
+            <span className="font-semibold text-pressci-dark">TOTAL</span>
+            <span className="text-base font-bold text-pressci-dark">
+              {formatFCFA(ticket.montant_total)}
+            </span>
+          </div>
+          <div className="flex justify-between px-3 py-1">
+            <span className="text-gray-500">Payé</span>
+            <span className="font-medium text-pressci-primary">
+              {formatFCFA(ticket.montant_paye)}
+            </span>
+          </div>
+          {resteAPayer > 0 && ticket.statut !== 'annule' && (
+            <div className="flex justify-between rounded-card bg-orange-50 px-3 py-1.5">
+              <span className="font-semibold text-orange-700">Reste à payer</span>
+              <span className="font-bold text-orange-700">{formatFCFA(resteAPayer)}</span>
+            </div>
+          )}
+          {ticket.mode_paiement && (
+            <div className="flex justify-between px-3 py-1">
+              <span className="text-gray-500">Mode de paiement</span>
+              <span className="font-medium">{MODE_PAIEMENT_LABELS[ticket.mode_paiement]}</span>
+            </div>
+          )}
+        </div>
+
+        {ticket.notes && (
+          <p className="mt-4 rounded-card border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+            📝 {ticket.notes}
+          </p>
+        )}
+
+        <div className="mt-8 rounded-full bg-pressci-light px-4 py-1.5 text-center text-[10px] font-medium text-pressci-dark">
+          Merci de votre confiance ! Présentez ce ticket au retrait de votre linge. — Document
+          généré par PressCI le {formatDate(new Date())} à {formatHeure(new Date())}
+        </div>
+      </div>
+    )}
+
+    {/* ============ GABARIT REÇU DE CAISSE 80mm (impression uniquement) ============ */}
+    {formatImpression === 'recu' && (
+      <div className="hidden text-[11px] leading-snug text-gray-900 print:block">
+        <div className="text-center">
+          <p className="text-sm font-bold uppercase">{pressing.nom}</p>
+          <p>{[pressing.adresse, pressing.commune].filter(Boolean).join(', ')}</p>
+          {pressing.telephone && <p>Tél : {pressing.telephone}</p>}
+        </div>
+        <p className="my-1 border-t border-dashed border-gray-500" />
+        <div className="flex justify-between font-bold">
+          <span>TICKET {ticket.numero}</span>
+          <span>{STATUT_LABELS[ticket.statut]}</span>
+        </div>
+        <p>Déposé : {formatDateHeure(ticket.date_depot)}</p>
+        <p>Retrait prévu : {formatDate(ticket.date_prevue)}</p>
+        {ticket.date_recuperation && (
+          <p className="font-semibold">Récupéré : {formatDateHeure(ticket.date_recuperation)}</p>
+        )}
+        <p>
+          Client : {ticket.client?.nom} ({ticket.client?.telephone})
+        </p>
+        <p className="my-1 border-t border-dashed border-gray-500" />
+        {(ticket.articles ?? []).map((a) => (
+          <div key={a.id} className="flex justify-between">
+            <span>
+              {a.quantite} x {a.type_article}
+            </span>
+            <span>{a.sous_total.toLocaleString('fr-FR')}</span>
+          </div>
+        ))}
+        <p className="my-1 border-t border-dashed border-gray-500" />
+        <div className="flex justify-between text-sm font-bold">
+          <span>TOTAL</span>
+          <span>{formatFCFA(ticket.montant_total)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Payé</span>
+          <span>{formatFCFA(ticket.montant_paye)}</span>
+        </div>
+        {resteAPayer > 0 && ticket.statut !== 'annule' && (
+          <div className="flex justify-between font-bold">
+            <span>RESTE À PAYER</span>
+            <span>{formatFCFA(resteAPayer)}</span>
+          </div>
+        )}
+        {ticket.mode_paiement && <p>Paiement : {MODE_PAIEMENT_LABELS[ticket.mode_paiement]}</p>}
+        {ticket.notes && <p>Note : {ticket.notes}</p>}
+        <p className="my-1 border-t border-dashed border-gray-500" />
+        <p className="text-center font-semibold">Merci de votre confiance !</p>
+        <p className="text-center">Présentez ce ticket au retrait.</p>
+        <p className="mt-1 text-center text-[9px] text-gray-500">
+          PressCI — {formatDate(new Date())} {formatHeure(new Date())}
+        </p>
+      </div>
+    )}
+    </>
   )
 }

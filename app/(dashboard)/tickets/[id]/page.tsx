@@ -36,8 +36,8 @@ function DetailTicket({ ticketId }: { ticketId: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pt-5">
-      <header className="mb-4 flex items-center gap-3">
+    <div className="mx-auto max-w-2xl px-4 pt-5 print:max-w-none print:px-0 print:pt-0">
+      <header className="mb-4 flex items-center gap-3 print:hidden">
         <Link
           href="/tickets"
           aria-label="Retour"
