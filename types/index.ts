@@ -1,6 +1,12 @@
 export type StatutTicket = 'nouveau' | 'en_traitement' | 'pret' | 'recupere' | 'annule'
 export type Plan = 'gratuit' | 'pro' | 'reseau'
-export type ModePaiement = 'cash' | 'wave' | 'orange_money' | 'a_recuperer'
+export type ModePaiement =
+  | 'cash'
+  | 'wave'
+  | 'orange_money'
+  | 'mtn_money'
+  | 'moov_money'
+  | 'a_recuperer'
 export type StatutAbonnement = 'actif' | 'expire' | 'suspendu'
 
 export interface Pressing {
@@ -79,7 +85,13 @@ export interface Abonnement {
   created_at: string
 }
 
-export type ModePaiementDepense = 'cash' | 'wave' | 'orange_money' | 'banque'
+export type ModePaiementDepense =
+  | 'cash'
+  | 'wave'
+  | 'orange_money'
+  | 'mtn_money'
+  | 'moov_money'
+  | 'banque'
 
 export interface Depense {
   id: string

@@ -23,7 +23,14 @@ interface TicketFormProps {
   pressingInitial?: string | null
 }
 
-const MODES: ModePaiement[] = ['cash', 'wave', 'orange_money', 'a_recuperer']
+const MODES: ModePaiement[] = [
+  'cash',
+  'wave',
+  'orange_money',
+  'mtn_money',
+  'moov_money',
+  'a_recuperer',
+]
 
 /** Petite icône par type d'article pour les tuiles du catalogue. */
 function emojiArticle(nom: string): string {
@@ -566,7 +573,7 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                 <span className="mb-1 block text-sm font-medium text-gray-700">
                   Mode de paiement
                 </span>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {MODES.map((mode) => (
                     <button
                       key={mode}

@@ -45,7 +45,7 @@ create table if not exists public.tickets (
   montant_total integer not null check (montant_total >= 0),
   montant_paye integer not null default 0 check (montant_paye >= 0),
   mode_paiement text
-    check (mode_paiement in ('cash', 'wave', 'orange_money', 'a_recuperer')),
+    check (mode_paiement in ('cash', 'wave', 'orange_money', 'mtn_money', 'moov_money', 'a_recuperer')),
   date_depot timestamptz default now(),
   date_prevue timestamptz not null,
   date_recuperation timestamptz,
@@ -104,7 +104,7 @@ create table if not exists public.encaissements (
   ticket_id uuid references public.tickets (id) on delete cascade not null,
   montant integer not null check (montant > 0),
   mode_paiement text not null
-    check (mode_paiement in ('cash', 'wave', 'orange_money', 'a_recuperer')),
+    check (mode_paiement in ('cash', 'wave', 'orange_money', 'mtn_money', 'moov_money', 'a_recuperer')),
   created_at timestamptz default now()
 );
 

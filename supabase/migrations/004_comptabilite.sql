@@ -15,7 +15,7 @@ create table if not exists public.depenses (
   compte text not null,
   montant integer not null check (montant > 0),
   mode_paiement text not null
-    check (mode_paiement in ('cash', 'wave', 'orange_money', 'banque')),
+    check (mode_paiement in ('cash', 'wave', 'orange_money', 'mtn_money', 'moov_money', 'banque')),
   reference text,
   created_at timestamptz default now()
 );

@@ -46,6 +46,8 @@ export const COMPTES_TRESORERIE: Record<string, CompteSyscohada> = {
   cash: { code: '571', intitule: 'Caisse' },
   wave: { code: '551', intitule: 'Monnaie électronique — Wave' },
   orange_money: { code: '552', intitule: 'Monnaie électronique — Orange Money' },
+  mtn_money: { code: '553', intitule: 'Monnaie électronique — MTN MoMo' },
+  moov_money: { code: '554', intitule: 'Monnaie électronique — Moov Money' },
   banque: { code: '521', intitule: 'Banque' },
 }
 
@@ -62,6 +64,8 @@ export const MODES_DEPENSE = [
   { id: 'cash', label: 'Caisse (espèces)' },
   { id: 'wave', label: 'Wave' },
   { id: 'orange_money', label: 'Orange Money' },
+  { id: 'mtn_money', label: 'MTN MoMo' },
+  { id: 'moov_money', label: 'Moov Money' },
   { id: 'banque', label: 'Banque' },
 ] as const
 

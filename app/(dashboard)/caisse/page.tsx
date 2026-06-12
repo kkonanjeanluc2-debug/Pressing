@@ -251,12 +251,14 @@ export default function CaissePage() {
           </div>
 
           {/* Totaux par mode de paiement */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
             {(
               [
                 { mode: 'cash' as ModePaiement, classes: 'border-green-200 bg-green-50', texte: 'text-green-800' },
                 { mode: 'wave' as ModePaiement, classes: 'border-blue-200 bg-blue-50', texte: 'text-blue-800' },
                 { mode: 'orange_money' as ModePaiement, classes: 'border-orange-200 bg-orange-50', texte: 'text-orange-800' },
+                { mode: 'mtn_money' as ModePaiement, classes: 'border-yellow-300 bg-yellow-50', texte: 'text-yellow-800' },
+                { mode: 'moov_money' as ModePaiement, classes: 'border-indigo-200 bg-indigo-50', texte: 'text-indigo-800' },
               ]
             ).map(({ mode, classes, texte }) => (
               <div key={mode} className={`rounded-card border p-4 text-center ${classes}`}>

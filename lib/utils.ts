@@ -76,6 +76,8 @@ export const MODE_PAIEMENT_LABELS: Record<ModePaiement, string> = {
   cash: 'Cash',
   wave: 'Wave',
   orange_money: 'Orange Money',
+  mtn_money: 'MTN MoMo',
+  moov_money: 'Moov Money',
   a_recuperer: 'À récupérer',
 }
 

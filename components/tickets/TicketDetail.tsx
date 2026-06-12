@@ -27,7 +27,13 @@ interface TicketDetailProps {
   nouveauticket?: boolean
 }
 
-const MODES_ENCAISSEMENT: ModePaiement[] = ['cash', 'wave', 'orange_money']
+const MODES_ENCAISSEMENT: ModePaiement[] = [
+  'cash',
+  'wave',
+  'orange_money',
+  'mtn_money',
+  'moov_money',
+]
 
 export default function TicketDetail({ ticket, pressing, recharger, nouveauticket }: TicketDetailProps) {
   const { peut } = useProfil()
