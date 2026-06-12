@@ -37,6 +37,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   const [modalEncaissement, setModalEncaissement] = useState(false)
   const [messageWhatsApp, setMessageWhatsApp] = useState<string | null>(null)
   const [envoiWhatsApp, setEnvoiWhatsApp] = useState(false)
+  const [guideWhatsApp, setGuideWhatsApp] = useState(false)
 
   // Modal d'encaissement
   const resteAPayer = ticket.montant_total - ticket.montant_paye
@@ -90,18 +91,16 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
       return
     }
 
-    // Ordinateur : téléchargement + ouverture de la discussion du client
+    // Ordinateur : téléchargement du PDF puis guide pas-à-pas
     doc.save(nomFichier)
-    const tel = ticket.client.telephone.replace(/\D/g, '').replace(/^225/, '')
-    window.open(
-      `https://wa.me/225${tel}?text=${encodeURIComponent(messageWhatsAppTicket)}`,
-      '_blank'
-    )
-    setInfo(
-      `Le PDF « ${nomFichier} » est téléchargé : joignez-le dans la discussion WhatsApp qui vient de s'ouvrir (icône trombone 📎).`
-    )
+    setGuideWhatsApp(true)
     setEnvoiWhatsApp(false)
   }
+
+  /** Discussion WhatsApp du client (fonctionne même hors contacts). */
+  const lienDiscussionClient = ticket.client
+    ? `https://wa.me/225${ticket.client.telephone.replace(/\D/g, '').replace(/^225/, '')}?text=${encodeURIComponent(messageWhatsAppTicket)}`
+    : ''
 
   async function changerStatut(statut: 'en_traitement' | 'pret' | 'recupere' | 'annule') {
     setEnCours(true)
@@ -322,8 +321,8 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         )}
       </div>
       <p className="-mt-2 text-center text-xs text-gray-400">
-        WhatsApp : sur téléphone, le PDF est joint directement ; sur ordinateur, il est
-        téléchargé puis à joindre dans la discussion qui s’ouvre.
+        WhatsApp : la discussion du client s’ouvre automatiquement, même s’il n’est pas dans
+        vos contacts.
       </p>
 
       {erreur && (
@@ -414,6 +413,62 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
           </p>
         )}
       </div>
+
+      {/* ---- Guide d'envoi WhatsApp (ordinateur) ---- */}
+      {guideWhatsApp && ticket.client && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div className="w-full max-w-md space-y-4 rounded-card bg-white p-5">
+            <h3 className="text-lg font-bold text-pressci-dark">
+              Envoyer le PDF à {ticket.client.nom}
+            </h3>
+
+            <ol className="space-y-3 text-sm text-gray-700">
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pressci-primary text-xs font-bold text-white">
+                  1
+                </span>
+                <span>
+                  ✅ Le ticket PDF vient d’être <strong>téléchargé</strong> (dossier
+                  Téléchargements).
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pressci-primary text-xs font-bold text-white">
+                  2
+                </span>
+                <span>
+                  Cliquez ci-dessous : la discussion de <strong>{ticket.client.nom}</strong> (
+                  {ticket.client.telephone}) s’ouvre <strong>automatiquement</strong> — pas
+                  besoin de l’avoir dans vos contacts.
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pressci-primary text-xs font-bold text-white">
+                  3
+                </span>
+                <span>
+                  Dans la discussion : <strong>glissez-déposez le PDF</strong>, ou cliquez sur le
+                  trombone 📎 → <strong>Document</strong> → choisissez le fichier, puis Envoyer.
+                </span>
+              </li>
+            </ol>
+
+            <a
+              href={lienDiscussionClient}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setGuideWhatsApp(false)}
+              className="flex items-center justify-center gap-2 rounded-card bg-[#25D366] px-4 py-3 font-semibold text-white active:brightness-90"
+            >
+              💬 Ouvrir la discussion de {ticket.client.nom}
+            </a>
+
+            <Button variante="ghost" pleineLargeur onClick={() => setGuideWhatsApp(false)}>
+              Fermer
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* ---- Modal d'encaissement ---- */}
       {modalEncaissement && (
