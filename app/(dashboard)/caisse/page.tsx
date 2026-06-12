@@ -145,51 +145,54 @@ export default function CaissePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-4 pt-5 print:max-w-none print:space-y-3 print:px-0 print:pt-0">
       {/* ====== En-tête du document imprimé ====== */}
-      <div className="hidden border-b-2 border-pressci-dark pb-4 print:block">
-        <div className="flex items-start justify-between">
+      <div className="hidden print:block">
+        <div className="flex items-start justify-between rounded-card bg-pressci-dark p-5 text-white">
           <div>
-            <div className="mb-1 flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-primary text-base font-bold text-white">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-accent text-base font-bold text-pressci-dark">
                 P
               </span>
-              <span className="text-sm font-bold text-pressci-dark">
+              <span className="text-sm font-semibold text-pressci-accent">
                 PressCI — Gestion de pressing
               </span>
             </div>
             {pressingSelectionne ? (
               <>
-                <h1 className="text-2xl font-bold text-gray-900">{pressingSelectionne.nom}</h1>
-                <p className="text-sm text-gray-600">
+                <h1 className="text-2xl font-bold text-white">{pressingSelectionne.nom}</h1>
+                <p className="text-sm text-pressci-light/90">
                   {[pressingSelectionne.adresse, pressingSelectionne.commune]
                     .filter(Boolean)
                     .join(', ') || ''}
                 </p>
                 {pressingSelectionne.telephone && (
-                  <p className="text-sm text-gray-600">Tél : {pressingSelectionne.telephone}</p>
+                  <p className="text-sm text-pressci-light/90">
+                    Tél : {pressingSelectionne.telephone}
+                  </p>
                 )}
               </>
             ) : (
               <>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-white">
                   Tous les pressings ({pressings.length})
                 </h1>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-pressci-light/90">
                   {pressings.map((p) => p.nom).join(' · ')}
                 </p>
               </>
             )}
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold uppercase tracking-wide text-pressci-dark">
+            <p className="text-lg font-bold uppercase tracking-wide text-pressci-accent">
               Rapport de caisse
             </p>
-            <p className="text-sm text-gray-600">{formatDate(new Date())}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm text-white">{formatDate(new Date())}</p>
+            <p className="text-xs text-pressci-light/80">
               Édité à {formatHeure(new Date())}
               {role === 'agent' && agent ? ` par ${agent.nom} (agent)` : ' par le propriétaire'}
             </p>
           </div>
         </div>
+        <div className="mt-1.5 h-1.5 rounded-full bg-pressci-accent" />
       </div>
 
       {/* ====== En-tête écran ====== */}
@@ -238,10 +241,10 @@ export default function CaissePage() {
       ) : (
         <>
           {/* Total du jour */}
-          <Card className="bg-pressci-primary text-center text-white print:border print:border-gray-300 print:bg-transparent print:text-gray-900">
+          <Card className="border-pressci-primary bg-pressci-primary text-center text-white">
             <p className="text-sm opacity-80">Total encaissé aujourd’hui</p>
             <p className="text-3xl font-bold">{formatFCFA(totalJour)}</p>
-            <div className="mt-3 flex justify-around border-t border-white/20 pt-3 text-xs print:border-gray-200">
+            <div className="mt-3 flex justify-around border-t border-white/20 pt-3 text-xs">
               <div>
                 <p className="opacity-70">Hier</p>
                 <p className="font-semibold">{formatFCFA(donnees?.totalHier ?? 0)}</p>
@@ -255,12 +258,16 @@ export default function CaissePage() {
 
           {/* Totaux par mode de paiement */}
           <div className="grid grid-cols-3 gap-3">
-            {(['cash', 'wave', 'orange_money'] as ModePaiement[]).map((mode) => (
-              <Card key={mode} className="text-center">
-                <p className="text-xs text-gray-500">{MODE_PAIEMENT_LABELS[mode]}</p>
-                <p className="text-sm font-bold text-pressci-dark">
-                  {formatFCFA(parMode[mode] ?? 0)}
-                </p>
+            {(
+              [
+                { mode: 'cash' as ModePaiement, classes: 'border-green-200 bg-green-50', texte: 'text-green-800' },
+                { mode: 'wave' as ModePaiement, classes: 'border-blue-200 bg-blue-50', texte: 'text-blue-800' },
+                { mode: 'orange_money' as ModePaiement, classes: 'border-orange-200 bg-orange-50', texte: 'text-orange-800' },
+              ]
+            ).map(({ mode, classes, texte }) => (
+              <Card key={mode} className={`text-center ${classes}`}>
+                <p className={`text-xs ${texte} opacity-80`}>{MODE_PAIEMENT_LABELS[mode]}</p>
+                <p className={`text-sm font-bold ${texte}`}>{formatFCFA(parMode[mode] ?? 0)}</p>
               </Card>
             ))}
           </div>
@@ -277,16 +284,16 @@ export default function CaissePage() {
                 const sousTotal = lignes.reduce((s, e) => s + e.montant, 0)
                 return (
                   <section key={pressing.id}>
-                    <div className="mb-2 flex items-center justify-between border-b-2 border-pressci-primary/30 pb-1">
-                      <h2 className="text-sm font-bold text-pressci-dark">
+                    <div className="mb-2 flex items-center justify-between rounded-card bg-pressci-primary px-3 py-2 text-white">
+                      <h2 className="text-sm font-bold">
                         🏪 {pressing.nom}
                         {pressing.commune ? (
-                          <span className="ml-1 font-normal text-gray-500">
+                          <span className="ml-1 font-normal text-pressci-light/90">
                             — {pressing.commune}
                           </span>
                         ) : null}
                       </h2>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-pressci-light/90">
                         {lignes.length} encaissement{lignes.length > 1 ? 's' : ''}
                       </span>
                     </div>
@@ -295,7 +302,7 @@ export default function CaissePage() {
                         <LigneEncaissement key={e.id} e={e} />
                       ))}
                     </div>
-                    <p className="mt-2 text-right text-sm font-bold text-pressci-dark">
+                    <p className="mt-2 rounded-card bg-pressci-light px-3 py-1.5 text-right text-sm font-bold text-pressci-dark">
                       Sous-total {pressing.nom} : {formatFCFA(sousTotal)}
                     </p>
                   </section>
@@ -320,22 +327,22 @@ export default function CaissePage() {
           <div className="hidden pt-12 print:block">
             <div className="flex justify-between gap-10">
               <div className="flex-1">
-                <p className="mb-10 text-xs font-semibold uppercase text-gray-500">
+                <p className="mb-10 text-xs font-semibold uppercase text-pressci-dark">
                   {role === 'agent' ? 'Signature de l’agent' : 'Signature du caissier'}
                 </p>
-                <div className="border-t border-gray-400" />
+                <div className="border-t-2 border-pressci-primary" />
               </div>
               <div className="flex-1">
-                <p className="mb-10 text-xs font-semibold uppercase text-gray-500">
+                <p className="mb-10 text-xs font-semibold uppercase text-pressci-dark">
                   Visa du propriétaire
                 </p>
-                <div className="border-t border-gray-400" />
+                <div className="border-t-2 border-pressci-primary" />
               </div>
             </div>
-            <p className="mt-6 text-center text-[10px] text-gray-400">
+            <div className="mt-6 rounded-full bg-pressci-light px-4 py-1.5 text-center text-[10px] font-medium text-pressci-dark">
               Document généré par PressCI le {formatDate(new Date())} à {formatHeure(new Date())} —
               www.pressci.app
-            </p>
+            </div>
           </div>
 
           <div className="print:hidden">
