@@ -20,7 +20,7 @@ export default function NouveauTicketPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pt-5">
+    <div className="mx-auto max-w-6xl px-4 pt-5">
       <header className="mb-4 flex items-center gap-3">
         <Link
           href="/tickets"
