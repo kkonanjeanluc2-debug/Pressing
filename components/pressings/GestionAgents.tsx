@@ -38,6 +38,12 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
   const [motDePasse, setMotDePasse] = useState('')
   const [permissions, setPermissions] = useState<PermissionsAgent>({ ...PERMISSIONS_DEFAUT })
 
+  // Modification d'un agent (nom, téléphone, mot de passe)
+  const [editNom, setEditNom] = useState('')
+  const [editTel, setEditTel] = useState('')
+  const [editMdp, setEditMdp] = useState('')
+  const [modifEnCours, setModifEnCours] = useState(false)
+
   const { donnees: agents, chargement, recharger } = useDonneesCachees<Agent[]>(
     `agents_${pressingId}`,
     async () => {
@@ -98,6 +104,45 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
     const data = (await res.json()) as ReponseApi
     if (!data.succes) setErreur(data.erreur ?? 'La modification a échoué.')
     await recharger()
+  }
+
+  function basculerAgent(agent: Agent, dejaOuvert: boolean) {
+    if (dejaOuvert) {
+      setAgentOuvert(null)
+      return
+    }
+    setEditNom(agent.nom)
+    setEditTel(agent.telephone)
+    setEditMdp('')
+    setAgentOuvert(agent.id)
+  }
+
+  async function enregistrerModifications(agent: Agent) {
+    setErreur(null)
+    const corps: Record<string, unknown> = { agent_id: agent.id }
+    if (editNom.trim() !== agent.nom) corps.nom = editNom
+    if (editTel.trim() !== agent.telephone) corps.telephone = editTel
+    if (editMdp) corps.mot_de_passe = editMdp
+    if (Object.keys(corps).length === 1) return
+
+    setModifEnCours(true)
+    try {
+      const res = await fetch('/api/agents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(corps),
+      })
+      const data = (await res.json()) as ReponseApi
+      if (!data.succes) {
+        setErreur(data.erreur ?? 'La modification a échoué.')
+      } else {
+        setEditMdp('')
+        await recharger()
+      }
+    } catch {
+      setErreur('Vérifiez votre réseau et réessayez.')
+    }
+    setModifEnCours(false)
   }
 
   async function supprimerAgent(agent: Agent) {
@@ -202,7 +247,7 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
               <div key={agent.id} className="rounded-card border border-gray-200">
                 <button
                   type="button"
-                  onClick={() => setAgentOuvert(ouvert ? null : agent.id)}
+                  onClick={() => basculerAgent(agent, ouvert)}
                   className="flex w-full items-center justify-between gap-2 p-3 text-left"
                 >
                   <div className="flex min-w-0 items-center gap-3">
@@ -228,6 +273,50 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
 
                 {ouvert && (
                   <div className="space-y-3 border-t border-gray-100 p-3">
+                    {/* ---- Modifier l'agent ---- */}
+                    <div className="space-y-2 rounded-card bg-gray-50 p-3">
+                      <p className="text-xs font-semibold uppercase text-gray-500">
+                        Modifier l'agent
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <input
+                          type="text"
+                          value={editNom}
+                          onChange={(e) => setEditNom(e.target.value)}
+                          placeholder="Nom"
+                          aria-label="Nom de l'agent"
+                          className="w-full rounded-card border border-gray-300 px-3 py-2 text-sm outline-none focus:border-pressci-primary"
+                        />
+                        <input
+                          type="tel"
+                          value={editTel}
+                          onChange={(e) => setEditTel(e.target.value)}
+                          placeholder="Téléphone"
+                          aria-label="Téléphone de l'agent"
+                          className="w-full rounded-card border border-gray-300 px-3 py-2 text-sm outline-none focus:border-pressci-primary"
+                        />
+                        <input
+                          type="text"
+                          value={editMdp}
+                          onChange={(e) => setEditMdp(e.target.value)}
+                          placeholder="Nouveau mot de passe"
+                          aria-label="Nouveau mot de passe"
+                          className="w-full rounded-card border border-gray-300 px-3 py-2 text-sm outline-none focus:border-pressci-primary"
+                        />
+                      </div>
+                      <Button
+                        className="min-h-[40px] w-full py-2 text-sm"
+                        chargement={modifEnCours}
+                        onClick={() => void enregistrerModifications(agent)}
+                      >
+                        Enregistrer les modifications
+                      </Button>
+                      <p className="text-[11px] text-gray-400">
+                        Le téléphone sert d'identifiant : s'il change, l'agent se connectera avec
+                        le nouveau numéro. Laissez le mot de passe vide pour ne pas le changer.
+                      </p>
+                    </div>
+
                     <div className="grid gap-1.5 sm:grid-cols-2">
                       {(Object.keys(PERMISSIONS_LABELS) as Array<keyof PermissionsAgent>).map(
                         (cle) => (

@@ -140,6 +140,7 @@ export interface PermissionsAgent {
   encaisser: boolean
   envoyer_sms: boolean
   gerer_clients: boolean
+  gerer_vetements: boolean
   voir_caisse: boolean
   voir_stats: boolean
   gerer_depenses: boolean
@@ -162,6 +163,7 @@ export const PERMISSIONS_DEFAUT: PermissionsAgent = {
   encaisser: true,
   envoyer_sms: true,
   gerer_clients: true,
+  gerer_vetements: false,
   voir_caisse: false,
   voir_stats: false,
   gerer_depenses: false,
@@ -173,6 +175,7 @@ export const PERMISSIONS_LABELS: Record<keyof PermissionsAgent, string> = {
   encaisser: 'Encaisser les paiements',
   envoyer_sms: 'Envoyer des SMS aux clients',
   gerer_clients: 'Gérer les clients',
+  gerer_vetements: 'Ajouter/modifier les vêtements',
   voir_caisse: 'Voir la caisse du jour',
   voir_stats: 'Voir les rapports',
   gerer_depenses: 'Saisir les dépenses (comptabilité)',

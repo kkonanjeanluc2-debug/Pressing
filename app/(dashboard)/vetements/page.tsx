@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -39,7 +39,7 @@ function parserListe(texte: string): { valides: LigneImport[]; ignorees: number 
 
 export default function VetementsPage() {
   const { pressings, chargement: chargementPressings } = usePressing()
-  const { role } = useProfil()
+  const { peut } = useProfil()
   const supabase = createClient()
 
   // Catalogue COMMUN à tous les pressings : il appartient au propriétaire
@@ -73,7 +73,7 @@ export default function VetementsPage() {
   )
 
   const liste = vetements ?? []
-  const proprietaire = role === 'proprietaire'
+  const peutGerer = peut('gerer_vetements')
 
   useEffect(() => {
     setMessage(null)
@@ -210,7 +210,7 @@ export default function VetementsPage() {
             {pressings.length > 1 ? `vos ${pressings.length} pressings` : 'votre pressing'}
           </p>
         </div>
-        {proprietaire && (
+        {peutGerer && (
           <button
             type="button"
             onClick={() => setImportOuvert((o) => !o)}
@@ -229,7 +229,7 @@ export default function VetementsPage() {
       )}
 
       {/* ---- Import de liste ---- */}
-      {importOuvert && proprietaire && (
+      {importOuvert && peutGerer && (
         <Card className="space-y-3 border-pressci-accent">
           <h2 className="text-sm font-semibold text-gray-700">Importer une liste de vêtements</h2>
           <p className="text-xs text-gray-500">
@@ -290,7 +290,7 @@ export default function VetementsPage() {
       )}
 
       {/* ---- Ajout d'un vêtement ---- */}
-      {proprietaire && (
+      {peutGerer && (
         <Card>
           <h2 className="mb-3 text-sm font-semibold text-gray-700">Ajouter un vêtement</h2>
           <form onSubmit={(e) => void ajouter(e)} className="flex flex-wrap items-end gap-3">
@@ -347,7 +347,7 @@ export default function VetementsPage() {
                   {v.actif ? formatFCFA(v.prix_defaut) : 'Désactivé (masqué au dépôt)'}
                 </p>
               </div>
-              {proprietaire ? (
+              {peutGerer ? (
                 <div className="flex shrink-0 items-center gap-1.5">
                   <input
                     type="number"
@@ -388,3 +388,4 @@ export default function VetementsPage() {
     </div>
   )
 }
+

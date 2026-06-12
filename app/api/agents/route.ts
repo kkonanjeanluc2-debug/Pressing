@@ -22,6 +22,8 @@ interface CorpsModification {
   actif?: boolean
   permissions?: Partial<PermissionsAgent>
   mot_de_passe?: string
+  nom?: string
+  telephone?: string
 }
 
 /** Nettoie l'objet permissions reçu (uniquement les clés connues, en booléens). */
@@ -172,6 +174,28 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
   const maj: Record<string, unknown> = {}
   if (typeof corps.actif === 'boolean') maj.actif = corps.actif
+
+  if (typeof corps.nom === 'string') {
+    if (corps.nom.trim().length < 2) {
+      return NextResponse.json({ succes: false, erreur: "Entrez le nom de l'agent" }, { status: 400 })
+    }
+    maj.nom = corps.nom.trim()
+  }
+
+  // Le téléphone est l'identifiant de connexion : son changement
+  // met aussi à jour l'email technique du compte auth.
+  let nouveauTelephone: string | null = null
+  if (typeof corps.telephone === 'string') {
+    if (!validerTelephone(corps.telephone)) {
+      return NextResponse.json(
+        { succes: false, erreur: 'Le numéro doit avoir 10 chiffres (ex : 07 07 07 07 07)' },
+        { status: 400 }
+      )
+    }
+    nouveauTelephone = normaliserTelephone(corps.telephone)
+    maj.telephone = nouveauTelephone
+  }
+
   if (corps.permissions) {
     maj.permissions = {
       ...nettoyerPermissions(agent.permissions as Partial<PermissionsAgent>),
@@ -183,26 +207,51 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  if (Object.keys(maj).length > 0) {
-    const { error } = await admin.from('agents').update(maj).eq('id', corps.agent_id)
+  if (corps.mot_de_passe && corps.mot_de_passe.length < 6) {
+    return NextResponse.json(
+      { succes: false, erreur: 'Le mot de passe doit faire au moins 6 caractères' },
+      { status: 400 }
+    )
+  }
+
+  // 1. Mise à jour du compte auth (mot de passe, identifiant, métadonnées)
+  const majAuth: { password?: string; email?: string; user_metadata?: Record<string, unknown> } = {}
+  if (corps.mot_de_passe) majAuth.password = corps.mot_de_passe
+  if (nouveauTelephone) majAuth.email = emailAgent(nouveauTelephone)
+  if (maj.nom || nouveauTelephone) {
+    majAuth.user_metadata = {
+      ...(maj.nom ? { nom: maj.nom } : {}),
+      ...(nouveauTelephone ? { telephone: nouveauTelephone } : {}),
+    }
+  }
+  if (Object.keys(majAuth).length > 0) {
+    const { error } = await admin.auth.admin.updateUserById(agent.user_id as string, majAuth)
     if (error) {
-      return NextResponse.json({ succes: false, erreur: 'Mise à jour échouée' }, { status: 500 })
+      const dejaPris = error.message.toLowerCase().includes('already')
+      return NextResponse.json(
+        {
+          succes: false,
+          erreur: dejaPris
+            ? 'Ce numéro est déjà utilisé par un autre accès agent.'
+            : 'La mise à jour du compte agent a échoué.',
+        },
+        { status: dejaPris ? 409 : 500 }
+      )
     }
   }
 
-  if (corps.mot_de_passe) {
-    if (corps.mot_de_passe.length < 6) {
-      return NextResponse.json(
-        { succes: false, erreur: 'Le mot de passe doit faire au moins 6 caractères' },
-        { status: 400 }
-      )
-    }
-    const { error } = await admin.auth.admin.updateUserById(agent.user_id as string, {
-      password: corps.mot_de_passe,
-    })
+  // 2. Mise à jour de la fiche agent
+  if (Object.keys(maj).length > 0) {
+    const { error } = await admin.from('agents').update(maj).eq('id', corps.agent_id)
     if (error) {
       return NextResponse.json(
-        { succes: false, erreur: 'Changement de mot de passe échoué' },
+        {
+          succes: false,
+          erreur:
+            error.code === '23505'
+              ? 'Ce numéro est déjà utilisé par un autre agent de ce pressing.'
+              : 'Mise à jour échouée',
+        },
         { status: 500 }
       )
     }
