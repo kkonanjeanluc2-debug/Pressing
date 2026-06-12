@@ -5,13 +5,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 interface CorpsRequete {
   plan?: string
-  pressing_id?: string
 }
 
 /**
- * POST /api/abonnement { plan: "pro" | "reseau", pressing_id? }
- * Initialise un paiement CinetPay et retourne l'URL de la page de paiement.
- * Si pressing_id est omis, le premier pressing du compte est utilisé.
+ * POST /api/abonnement { plan: "pro" | "reseau" }
+ * L'abonnement est pris par le PROPRIÉTAIRE (compte/entreprise) :
+ * il couvre l'ensemble de ses pressings selon les limites du forfait.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = createClient()
@@ -35,27 +34,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   const plan = corps.plan as Exclude<Plan, 'gratuit'>
 
-  let requete = supabase
-    .from('pressings')
-    .select('id, nom, telephone')
-    .eq('owner_id', user.id)
-    .order('created_at', { ascending: true })
-    .limit(1)
-  if (corps.pressing_id) {
-    requete = requete.eq('id', corps.pressing_id)
-  }
-  const { data: pressing, error } = await requete.maybeSingle()
+  // Identité de facturation : profil du titulaire, sinon premier pressing
+  const [{ data: profil }, { data: pressing }] = await Promise.all([
+    supabase.from('profils').select('nom, telephone').eq('user_id', user.id).maybeSingle(),
+    supabase
+      .from('pressings')
+      .select('nom, telephone')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ])
 
-  if (error || !pressing) {
-    return NextResponse.json({ succes: false, erreur: 'Pressing introuvable' }, { status: 404 })
-  }
+  const nomClient =
+    (profil?.nom as string | undefined) ?? (pressing?.nom as string | undefined) ?? 'Client PressCI'
+  const telClient =
+    (profil?.telephone as string | null | undefined) ??
+    (pressing?.telephone as string | null | undefined) ??
+    '0000000000'
 
-  const resultat = await initierPaiement(
-    pressing.id as string,
-    plan,
-    pressing.nom as string,
-    (pressing.telephone as string | null) ?? '0000000000'
-  )
+  const resultat = await initierPaiement(user.id, plan, nomClient, telClient)
 
   return NextResponse.json(resultat, { status: resultat.succes ? 200 : 502 })
 }

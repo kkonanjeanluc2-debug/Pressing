@@ -70,19 +70,21 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
   const montantTotal = articles.reduce((s, a) => s + a.quantite * a.prix_unitaire, 0)
   const nbPieces = articles.reduce((s, a) => s + a.quantite, 0)
 
-  // Charger les tarifs prédéfinis du pressing
+  // Charger le catalogue de vêtements (commun à tous les pressings du propriétaire)
+  const ownerId = pressings[0]?.owner_id ?? null
   useEffect(() => {
+    if (!ownerId) return
     async function chargerTarifs() {
       const { data } = await supabase
         .from('tarifs')
         .select('*')
-        .eq('pressing_id', pressingId)
+        .eq('owner_id', ownerId as string)
         .eq('actif', true)
         .order('type_article')
       setTarifs((data ?? []) as Tarif[])
     }
     void chargerTarifs()
-  }, [pressingId, supabase])
+  }, [ownerId, supabase])
 
   // Autocomplete client (recherche différée 300 ms)
   useEffect(() => {

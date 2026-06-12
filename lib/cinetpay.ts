@@ -31,10 +31,11 @@ export interface InitPaiementResult {
 
 /**
  * Initialise un paiement d'abonnement et retourne l'URL de paiement CinetPay.
- * transaction_id encode le pressing et le plan : "PRESSCI-{pressingId}-{plan}-{timestamp}"
+ * L'abonnement appartient au propriétaire/entreprise :
+ * transaction_id = "PRESSCI-{ownerId}-{plan}-{timestamp}"
  */
 export async function initierPaiement(
-  pressingId: string,
+  ownerId: string,
   plan: Exclude<Plan, 'gratuit'>,
   clientNom: string,
   clientTelephone: string
@@ -47,7 +48,7 @@ export async function initierPaiement(
     return { succes: false, erreur: 'Configuration CinetPay manquante' }
   }
 
-  const transactionId = `PRESSCI-${pressingId}-${plan}-${Date.now()}`
+  const transactionId = `PRESSCI-${ownerId}-${plan}-${Date.now()}`
 
   const res = await fetch(`${CINETPAY_BASE_URL}/payment`, {
     method: 'POST',
@@ -64,7 +65,7 @@ export async function initierPaiement(
       notify_url: `${appUrl}/api/cinetpay-webhook`,
       return_url: `${appUrl}/parametres?paiement=retour`,
       channels: 'MOBILE_MONEY',
-      metadata: JSON.stringify({ pressing_id: pressingId, plan }),
+      metadata: JSON.stringify({ owner_id: ownerId, plan }),
     }),
   })
 

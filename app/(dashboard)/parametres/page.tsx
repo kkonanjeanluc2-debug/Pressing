@@ -49,9 +49,7 @@ export default function ParametresPage() {
   const [telGerant, setTelGerant] = useState('')
   const [sauvegardeProfil, setSauvegardeProfil] = useState(false)
 
-  // ---- Pressing concerné par l'abonnement ----
-  const [pressingEditeId, setPressingEditeId] = useState<string | null>(null)
-  const pressing = pressings.find((p) => p.id === pressingEditeId) ?? pressings[0] ?? null
+  const pressing = pressings[0] ?? null
 
   // ---- Apparence ----
   const [theme, setTheme] = useState<Theme>('clair')
@@ -101,16 +99,15 @@ export default function ParametresPage() {
     void chargerProfil()
   }, [supabase])
 
-  // Abonnement du pressing sélectionné
+  // Abonnement du compte (propriétaire/entreprise)
   useEffect(() => {
-    if (!pressing) return
+    if (!userId) return
 
     async function chargerAbonnement() {
-      if (!pressing) return
       const { data } = await supabase
         .from('abonnements')
         .select('*')
-        .eq('pressing_id', pressing.id)
+        .eq('owner_id', userId as string)
         .eq('statut', 'actif')
         .order('created_at', { ascending: false })
         .limit(1)
@@ -118,7 +115,7 @@ export default function ParametresPage() {
       setAbonnement(data as Abonnement | null)
     }
     void chargerAbonnement()
-  }, [pressing, supabase])
+  }, [userId, supabase])
 
   function notifier(texte: string) {
     setErreur(null)
@@ -203,14 +200,14 @@ export default function ParametresPage() {
   }
 
   async function passerAuPlan(plan: Plan) {
-    if (plan === 'gratuit' || !pressing) return
+    if (plan === 'gratuit') return
     setPaiementEnCours(plan)
     setErreur(null)
     try {
       const res = await fetch('/api/abonnement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, pressing_id: pressing.id }),
+        body: JSON.stringify({ plan }),
       })
       const data = (await res.json()) as { succes: boolean; url?: string; erreur?: string }
       if (data.succes && data.url) {
@@ -468,22 +465,12 @@ export default function ParametresPage() {
           {/* ============ ABONNEMENT ============ */}
           {section === 'abonnement' && (
             <Card className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-gray-700">Abonnement</h2>
-                {pressings.length > 1 && (
-                  <select
-                    value={pressing.id}
-                    onChange={(e) => setPressingEditeId(e.target.value)}
-                    aria-label="Pressing concerné"
-                    className="rounded-card border border-gray-300 bg-white px-2 py-1.5 text-sm font-semibold outline-none focus:border-pressci-primary"
-                  >
-                    {pressings.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nom}
-                      </option>
-                    ))}
-                  </select>
-                )}
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700">Abonnement du compte</h2>
+                <p className="text-xs text-gray-500">
+                  Le forfait est pris par le propriétaire/entreprise et couvre l’ensemble de vos
+                  pressings (le nombre de pressings dépend du forfait).
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -527,8 +514,7 @@ export default function ParametresPage() {
                 })}
               </div>
               <p className="text-xs text-gray-400">
-                Paiement sécurisé par CinetPay — Wave et Orange Money acceptés. L’abonnement est
-                propre à chaque pressing.
+                Paiement sécurisé par CinetPay — Wave et Orange Money acceptés.
               </p>
             </Card>
           )}

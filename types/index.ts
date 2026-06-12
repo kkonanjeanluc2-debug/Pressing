@@ -67,7 +67,9 @@ export interface ArticleTicket {
 
 export interface Tarif {
   id: string
-  pressing_id: string
+  /** Catalogue commun : appartient au propriétaire, partagé entre ses pressings */
+  owner_id: string
+  pressing_id: string | null
   type_article: string
   prix_defaut: number
   actif: boolean
@@ -75,7 +77,9 @@ export interface Tarif {
 
 export interface Abonnement {
   id: string
-  pressing_id: string
+  /** L'abonnement est pris par le propriétaire/entreprise */
+  owner_id: string
+  pressing_id: string | null
   plan: Plan
   statut: StatutAbonnement
   date_debut: string
@@ -212,6 +216,8 @@ export interface PlanInfo {
   prix: number
   description: string
   limite_tickets: number | null
+  /** Nombre maximum de pressings (null = illimité) */
+  limite_pressings: number | null
 }
 
 export const PLANS: PlanInfo[] = [
@@ -219,22 +225,25 @@ export const PLANS: PlanInfo[] = [
     id: 'gratuit',
     nom: 'Gratuit',
     prix: 0,
-    description: '20 tickets par mois',
+    description: '1 pressing · 20 tickets par mois',
     limite_tickets: 20,
+    limite_pressings: 1,
   },
   {
     id: 'pro',
     nom: 'Pro',
     prix: 5000,
-    description: 'Tickets illimités, SMS clients',
+    description: '1 pressing · tickets et SMS illimités',
     limite_tickets: null,
+    limite_pressings: 1,
   },
   {
     id: 'reseau',
     nom: 'Réseau',
     prix: 12000,
-    description: 'Multi-points de vente, illimité',
+    description: 'Pressings illimités · tout illimité',
     limite_tickets: null,
+    limite_pressings: null,
   },
 ]
 

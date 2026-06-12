@@ -67,16 +67,29 @@ export default function CreerPressing({
       .single()
 
     if (error || !pressing) {
-      setErreur('La création du pressing a échoué. Vérifiez votre réseau et réessayez.')
+      setErreur(
+        error?.message.includes('LIMITE_PRESSINGS')
+          ? 'Votre forfait actuel ne permet qu’un seul pressing. Passez au plan Réseau (Paramètres → Abonnement) pour créer d’autres pressings.'
+          : 'La création du pressing a échoué. Vérifiez votre réseau et réessayez.'
+      )
       setChargement(false)
       return
     }
 
-    await supabase.from('abonnements').insert({
-      pressing_id: pressing.id,
-      plan: 'gratuit',
-      statut: 'actif',
-    })
+    // Abonnement gratuit du COMPTE (créé une seule fois, au premier pressing)
+    const { data: aboExistant } = await supabase
+      .from('abonnements')
+      .select('id')
+      .eq('owner_id', user.id)
+      .limit(1)
+      .maybeSingle()
+    if (!aboExistant) {
+      await supabase.from('abonnements').insert({
+        owner_id: user.id,
+        plan: 'gratuit',
+        statut: 'actif',
+      })
+    }
 
     // Profil du titulaire (depuis l'inscription) si pas encore créé
     const meta = (user.user_metadata ?? {}) as Record<string, unknown>

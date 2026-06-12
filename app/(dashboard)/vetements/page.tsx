@@ -42,8 +42,8 @@ export default function VetementsPage() {
   const { role } = useProfil()
   const supabase = createClient()
 
-  const [pressingId, setPressingId] = useState<string | null>(null)
-  const pressingActifId = pressingId ?? pressings[0]?.id ?? null
+  // Catalogue COMMUN à tous les pressings : il appartient au propriétaire
+  const ownerId = pressings[0]?.owner_id ?? null
 
   // Ajout simple
   const [nom, setNom] = useState('')
@@ -59,12 +59,12 @@ export default function VetementsPage() {
   const fichierRef = useRef<HTMLInputElement | null>(null)
 
   const { donnees: vetements, chargement, recharger } = useDonneesCachees<Tarif[]>(
-    pressingActifId ? `vetements_${pressingActifId}` : null,
+    ownerId ? `vetements_${ownerId}` : null,
     async () => {
       const { data, error } = await supabase
         .from('tarifs')
         .select('*')
-        .eq('pressing_id', pressingActifId as string)
+        .eq('owner_id', ownerId as string)
         .order('type_article')
       if (error) throw error
       return (data ?? []) as Tarif[]
@@ -75,11 +75,10 @@ export default function VetementsPage() {
   const liste = vetements ?? []
   const proprietaire = role === 'proprietaire'
 
-  // Reset des messages quand on change de pressing
   useEffect(() => {
     setMessage(null)
     setErreur(null)
-  }, [pressingActifId])
+  }, [ownerId])
 
   async function ajouter(e: FormEvent) {
     e.preventDefault()
@@ -98,11 +97,11 @@ export default function VetementsPage() {
       setErreur('Ce vêtement existe déjà dans la liste.')
       return
     }
-    if (!pressingActifId) return
+    if (!ownerId) return
 
     setEnregistrement(true)
     const { error } = await supabase.from('tarifs').insert({
-      pressing_id: pressingActifId,
+      owner_id: ownerId,
       type_article: nom.trim(),
       prix_defaut: prixNum,
     })
@@ -145,7 +144,7 @@ export default function VetementsPage() {
   async function importer() {
     setErreur(null)
     setMessage(null)
-    if (!pressingActifId) return
+    if (!ownerId) return
 
     const { valides, ignorees } = parserListe(texteImport)
     if (valides.length === 0) {
@@ -168,7 +167,7 @@ export default function VetementsPage() {
     setImportEnCours(true)
     const { error } = await supabase.from('tarifs').insert(
       nouveaux.map((l) => ({
-        pressing_id: pressingActifId,
+        owner_id: ownerId,
         type_article: l.nom,
         prix_defaut: l.prix,
       }))
@@ -207,8 +206,8 @@ export default function VetementsPage() {
         <div>
           <h1 className="text-xl font-bold text-pressci-dark lg:text-2xl">Vêtements</h1>
           <p className="text-sm text-gray-500">
-            {liste.length} vêtement{liste.length > 1 ? 's' : ''} au catalogue — utilisés dans le
-            formulaire de dépôt
+            {liste.length} vêtement{liste.length > 1 ? 's' : ''} — catalogue commun à{' '}
+            {pressings.length > 1 ? `vos ${pressings.length} pressings` : 'votre pressing'}
           </p>
         </div>
         {proprietaire && (
@@ -221,23 +220,6 @@ export default function VetementsPage() {
           </button>
         )}
       </header>
-
-      {/* Filtre pressing */}
-      {pressings.length > 1 && (
-        <select
-          value={pressingActifId ?? ''}
-          onChange={(e) => setPressingId(e.target.value)}
-          aria-label="Choisir le pressing"
-          className="w-full rounded-card border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-pressci-primary lg:max-w-xs"
-        >
-          {pressings.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nom}
-              {p.commune ? ` — ${p.commune}` : ''}
-            </option>
-          ))}
-        </select>
-      )}
 
       {message && (
         <p className="rounded-card bg-green-50 px-3 py-2 text-sm text-green-700">{message}</p>

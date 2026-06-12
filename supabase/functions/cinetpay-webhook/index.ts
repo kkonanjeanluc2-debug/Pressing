@@ -76,7 +76,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (!transactionId || !correspondance) {
     return Response.json({ erreur: 'Transaction inconnue' }, { status: 400 })
   }
-  const pressingId = correspondance[1]
+  const ownerId = correspondance[1]
   const plan = correspondance[2] as 'pro' | 'reseau'
 
   if (!(await verifierTransaction(transactionId))) {
@@ -101,14 +101,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
   await supabase
     .from('abonnements')
     .update({ statut: 'expire' })
-    .eq('pressing_id', pressingId)
+    .eq('owner_id', ownerId)
     .eq('statut', 'actif')
 
   const dateFin = new Date()
   dateFin.setDate(dateFin.getDate() + 30)
 
   const { error } = await supabase.from('abonnements').insert({
-    pressing_id: pressingId,
+    owner_id: ownerId,
     plan,
     statut: 'actif',
     date_fin: dateFin.toISOString(),

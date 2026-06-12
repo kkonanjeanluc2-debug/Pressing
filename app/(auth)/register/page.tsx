@@ -70,14 +70,21 @@ export default function RegisterPage() {
       return
     }
 
-    // Profil du titulaire (affiché sur les documents)
-    await supabase.from('profils').upsert({
-      user_id: authData.user.id,
-      type_compte: typeCompte,
-      nom: nomTitulaire.trim(),
-      rccm: rccm.trim() || null,
-      ncc: ncc.trim() || null,
-    })
+    // Profil du titulaire (affiché sur les documents) + abonnement gratuit du compte
+    await Promise.all([
+      supabase.from('profils').upsert({
+        user_id: authData.user.id,
+        type_compte: typeCompte,
+        nom: nomTitulaire.trim(),
+        rccm: rccm.trim() || null,
+        ncc: ncc.trim() || null,
+      }),
+      supabase.from('abonnements').insert({
+        owner_id: authData.user.id,
+        plan: 'gratuit',
+        statut: 'actif',
+      }),
+    ])
 
     // Le tableau de bord guidera la création du premier pressing
     router.push('/')

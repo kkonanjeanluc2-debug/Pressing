@@ -44,14 +44,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ erreur: 'Transaction inconnue' }, { status: 400 })
   }
 
-  // Décodage : PRESSCI-{uuid}-{plan}-{timestamp}
+  // Décodage : PRESSCI-{ownerId}-{plan}-{timestamp}
   const correspondance = transactionId.match(
     /^PRESSCI-([0-9a-f-]{36})-(pro|reseau)-(\d+)$/
   )
   if (!correspondance) {
     return NextResponse.json({ erreur: 'Format de transaction invalide' }, { status: 400 })
   }
-  const pressingId = correspondance[1] as string
+  const ownerId = correspondance[1] as string
   const plan = correspondance[2] as Exclude<Plan, 'gratuit'>
 
   // 2. Re-vérification auprès de CinetPay (jamais se fier au seul webhook)
@@ -72,11 +72,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ statut: 'déjà traité' }, { status: 200 })
   }
 
-  // Expirer les anciens abonnements actifs
+  // Expirer les anciens abonnements actifs du propriétaire
   await supabase
     .from('abonnements')
     .update({ statut: 'expire' })
-    .eq('pressing_id', pressingId)
+    .eq('owner_id', ownerId)
     .eq('statut', 'actif')
 
   // Activer le nouvel abonnement (30 jours)
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   dateFin.setDate(dateFin.getDate() + 30)
 
   const { error } = await supabase.from('abonnements').insert({
-    pressing_id: pressingId,
+    owner_id: ownerId,
     plan,
     statut: 'actif',
     date_fin: dateFin.toISOString(),
