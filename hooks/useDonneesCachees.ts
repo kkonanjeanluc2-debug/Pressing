@@ -1,7 +1,16 @@
 'use client'
 
-import { ecrireCache, lireCache } from '@/lib/cache'
+import { ecrireCache, estFrais, lireCache, marquerFraicheur } from '@/lib/cache'
 import { useCallback, useEffect, useRef, useState } from 'react'
+
+/**
+ * Fenêtre de fraîcheur : si les données ont été chargées il y a moins de
+ * 15 secondes, on ne refait pas la requête à la navigation (le cache suffit).
+ */
+const TTL_FRAICHEUR_MS = 15_000
+
+/** Requêtes en cours, partagées entre tous les composants (déduplication). */
+const requetesEnVol = new Map<string, Promise<unknown>>()
 
 interface ResultatDonneesCachees<T> {
   donnees: T | null
@@ -14,11 +23,11 @@ interface ResultatDonneesCachees<T> {
 /**
  * Charge des données avec affichage instantané :
  * 1. le cache (mémoire/localStorage) est affiché immédiatement s'il existe ;
- * 2. les données fraîches sont chargées en arrière-plan et remplacent le cache.
+ * 2. si les données sont fraîches (< 15 s), aucune requête réseau n'est faite ;
+ * 3. sinon, rafraîchissement silencieux en arrière-plan ;
+ * 4. les requêtes identiques simultanées sont dédupliquées.
  *
- * @param cle clé de cache unique (null = ne rien charger pour l'instant)
- * @param chargerDonnees fonction qui récupère les données fraîches
- * @param messageErreur message affiché à l'utilisateur en cas d'échec réseau
+ * `recharger()` force toujours un vrai rechargement réseau (après mutation).
  */
 export function useDonneesCachees<T>(
   cle: string | null,
@@ -40,8 +49,18 @@ export function useDonneesCachees<T>(
   const recharger = useCallback(async () => {
     if (!cle) return
     try {
-      const resultat = await chargerRef.current()
-      ecrireCache(cle, resultat)
+      // Déduplication : une seule requête réseau par clé à la fois
+      let promesse = requetesEnVol.get(cle) as Promise<T> | undefined
+      if (!promesse) {
+        promesse = chargerRef.current().then((resultat) => {
+          ecrireCache(cle, resultat)
+          marquerFraicheur(cle)
+          return resultat
+        })
+        requetesEnVol.set(cle, promesse as Promise<unknown>)
+        void promesse.finally(() => requetesEnVol.delete(cle))
+      }
+      const resultat = await promesse
       setDonnees(resultat)
       setErreur(null)
     } catch {
@@ -53,15 +72,18 @@ export function useDonneesCachees<T>(
 
   useEffect(() => {
     if (!cle) return
-    // Affichage instantané depuis le cache, puis rafraîchissement silencieux
+    // 1. Affichage instantané depuis le cache
     const enCache = lireCache<T>(cle)
     if (enCache !== null) {
       setDonnees(enCache)
       setChargement(false)
+      // 2. Données récentes : pas besoin de retoucher au réseau
+      if (estFrais(cle, TTL_FRAICHEUR_MS)) return
     } else {
       setDonnees(null)
       setChargement(true)
     }
+    // 3. Rafraîchissement silencieux
     void recharger()
   }, [cle, recharger])
 

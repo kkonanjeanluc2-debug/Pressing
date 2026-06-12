@@ -30,9 +30,14 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     }
   )
 
+  // getSession lit le cookie localement (pas d'aller-retour réseau à chaque
+  // navigation, contrairement à getUser). Le token n'est rafraîchi par le
+  // réseau que s'il est expiré. La sécurité des données reste garantie par
+  // RLS côté Supabase : ce middleware ne fait que des redirections.
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
   const pathname = request.nextUrl.pathname
   const estRoutePublique = ROUTES_PUBLIQUES.some((r) => pathname.startsWith(r))

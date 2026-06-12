@@ -7,6 +7,17 @@
 const PREFIXE = 'pressci_cache_'
 
 const memoire = new Map<string, unknown>()
+const horodatages = new Map<string, number>()
+
+/** Marque des données comme fraîchement chargées depuis le réseau. */
+export function marquerFraicheur(cle: string): void {
+  horodatages.set(cle, Date.now())
+}
+
+/** Les données ont-elles été chargées depuis moins de ttlMs millisecondes ? */
+export function estFrais(cle: string, ttlMs: number): boolean {
+  return Date.now() - (horodatages.get(cle) ?? 0) < ttlMs
+}
 
 export function lireCache<T>(cle: string): T | null {
   if (memoire.has(cle)) return memoire.get(cle) as T
@@ -35,6 +46,7 @@ export function ecrireCache<T>(cle: string, valeur: T): void {
 /** Vide tout le cache (à appeler à la déconnexion). */
 export function viderCache(): void {
   memoire.clear()
+  horodatages.clear()
   if (typeof window === 'undefined') return
   try {
     const aSupprimer: string[] = []

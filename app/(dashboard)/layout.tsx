@@ -1,3 +1,4 @@
+import PrechargeurDonnees from '@/components/PrechargeurDonnees'
 import BottomNav from '@/components/ui/BottomNav'
 import OfflineBanner from '@/components/ui/OfflineBanner'
 import SideNav from '@/components/ui/SideNav'
@@ -5,6 +6,8 @@ import SideNav from '@/components/ui/SideNav'
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
+      {/* Préchargement silencieux des tickets et clients */}
+      <PrechargeurDonnees />
       {/* Navigation latérale — desktop uniquement (réductible) */}
       <SideNav />
 
