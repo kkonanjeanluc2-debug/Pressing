@@ -250,6 +250,67 @@ export const PLANS: PlanInfo[] = [
   },
 ]
 
+// ---------- Console super admin ----------
+
+export interface StatsAdmin {
+  comptes: { total: number; entreprises: number; personnes: number }
+  pressings: { total: number; ouverts: number }
+  agents: { total: number; actifs: number }
+  tickets: { total: number; mois: number }
+  volume_mois: number
+  abonnements: {
+    gratuit: number
+    pro: number
+    reseau: number
+    mrr: number
+    revenus_total: number
+  }
+  derniers_comptes: Array<{
+    nom: string
+    type_compte: string
+    created_at: string
+    plan: string
+  }>
+}
+
+export interface UtilisateurAdmin {
+  user_id: string
+  nom: string
+  type_compte: string
+  email: string
+  telephone: string | null
+  created_at: string
+  nb_pressings: number
+  plan: string
+}
+
+export interface AbonnementAdmin {
+  id: string
+  plan: string
+  statut: string
+  montant: number | null
+  date_debut: string | null
+  date_fin: string | null
+  created_at: string
+  proprietaire: string
+}
+
+export interface ActiviteAdmin {
+  tickets: Array<{
+    numero: string
+    statut: string
+    montant_total: number
+    created_at: string
+    pressing: string
+  }>
+  encaissements: Array<{
+    montant: number
+    mode_paiement: string
+    created_at: string
+    pressing: string
+  }>
+}
+
 export const COMMUNES_ABIDJAN: string[] = [
   'Abobo',
   'Adjamé',

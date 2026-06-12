@@ -1,45 +1,15 @@
-import { createAdminClient, createClient } from '@/lib/supabase/server'
+﻿import { verifierSuperAdmin } from '@/lib/admin'
+import { createAdminClient } from '@/lib/supabase/server'
+import type { StatsAdmin } from '@/types'
 import { NextResponse } from 'next/server'
 
-export interface StatsAdmin {
-  comptes: { total: number; entreprises: number; personnes: number }
-  pressings: { total: number; ouverts: number }
-  agents: { total: number; actifs: number }
-  tickets: { total: number; mois: number }
-  /** Volume encaissé par les pressings ce mois (FCFA) */
-  volume_mois: number
-  abonnements: {
-    gratuit: number
-    pro: number
-    reseau: number
-    /** Revenu mensuel récurrent des abonnements payants actifs */
-    mrr: number
-    /** Total historique des paiements d'abonnements */
-    revenus_total: number
-  }
-  derniers_comptes: Array<{ nom: string; type_compte: string; created_at: string }>
-}
 
 /**
  * GET /api/admin/stats — statistiques globales de la plateforme.
  * Réservé aux super administrateurs (table super_admins).
  */
 export async function GET(): Promise<NextResponse> {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ succes: false, erreur: 'Non connecté' }, { status: 401 })
-  }
-
-  // Vérification du droit super admin (RLS : chacun ne voit que sa ligne)
-  const { data: estAdmin } = await supabase
-    .from('super_admins')
-    .select('user_id')
-    .eq('user_id', user.id)
-    .maybeSingle()
-  if (!estAdmin) {
+  if (!(await verifierSuperAdmin())) {
     return NextResponse.json({ succes: false, erreur: 'Accès réservé' }, { status: 403 })
   }
 
@@ -72,14 +42,11 @@ export async function GET(): Promise<NextResponse> {
       .select('id', { count: 'exact', head: true })
       .gte('created_at', debutMois.toISOString()),
     admin.from('encaissements').select('montant').gte('created_at', debutMois.toISOString()),
-    admin
-      .from('abonnements')
-      .select('plan')
-      .eq('statut', 'actif'),
+    admin.from('abonnements').select('plan, owner_id').eq('statut', 'actif'),
     admin.from('abonnements').select('montant').not('montant', 'is', null),
     admin
       .from('profils')
-      .select('nom, type_compte, created_at')
+      .select('user_id, nom, type_compte, created_at')
       .order('created_at', { ascending: false })
       .limit(8),
   ])
@@ -87,7 +54,8 @@ export async function GET(): Promise<NextResponse> {
   const lignesProfils = (profils.data ?? []) as Array<{ type_compte: string }>
   const entreprises = lignesProfils.filter((p) => p.type_compte === 'entreprise').length
 
-  const plansActifs = (abonnementsActifs.data ?? []) as Array<{ plan: string }>
+  const plansActifs = (abonnementsActifs.data ?? []) as Array<{ plan: string; owner_id: string }>
+  const planParProprietaire = new Map(plansActifs.map((a) => [a.owner_id, a.plan]))
   const nbPro = plansActifs.filter((a) => a.plan === 'pro').length
   const nbReseau = plansActifs.filter((a) => a.plan === 'reseau').length
   const nbGratuit = plansActifs.filter((a) => a.plan === 'gratuit').length
@@ -115,11 +83,19 @@ export async function GET(): Promise<NextResponse> {
         0
       ),
     },
-    derniers_comptes: ((derniersComptes.data ?? []) as Array<{
-      nom: string
-      type_compte: string
-      created_at: string
-    }>),
+    derniers_comptes: (
+      (derniersComptes.data ?? []) as Array<{
+        user_id: string
+        nom: string
+        type_compte: string
+        created_at: string
+      }>
+    ).map((c) => ({
+      nom: c.nom,
+      type_compte: c.type_compte,
+      created_at: c.created_at,
+      plan: planParProprietaire.get(c.user_id) ?? 'gratuit',
+    })),
   }
 
   return NextResponse.json({ succes: true, stats })
