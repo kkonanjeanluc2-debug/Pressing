@@ -211,17 +211,21 @@ export default function SideNav() {
 
       {/* Profil + actions */}
       <div className="border-t border-white/10 px-3 py-4">
+        {/* Pressing de l'agent : bandeau dédié au-dessus du profil */}
+        {!reduite && role === 'agent' && pressing && (
+          <div className="mb-2 rounded-card bg-white/10 px-3 py-1.5 text-center">
+            <p className="truncate text-[11px] font-bold uppercase tracking-wide text-pressci-accent">
+              🏪 {pressing.nom}
+            </p>
+          </div>
+        )}
+
         <div className={cn('mb-3 flex items-center gap-3', reduite && 'justify-center')}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pressci-primary text-sm font-bold text-white">
-            {(email ?? 'P').charAt(0).toUpperCase()}
+            {(role === 'agent' ? agent?.nom ?? 'A' : email ?? 'P').charAt(0).toUpperCase()}
           </div>
           {!reduite && (
             <div className="min-w-0">
-              {role === 'agent' && pressing && (
-                <p className="truncate text-xs font-bold uppercase tracking-wide text-pressci-accent">
-                  🏪 {pressing.nom}
-                </p>
-              )}
               <p className="truncate text-sm font-semibold text-white">
                 {role === 'agent' ? agent?.nom ?? '…' : email ?? '…'}
               </p>
