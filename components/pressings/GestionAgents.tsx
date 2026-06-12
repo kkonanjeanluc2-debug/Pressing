@@ -39,10 +39,12 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
   const [permissions, setPermissions] = useState<PermissionsAgent>({ ...PERMISSIONS_DEFAUT })
 
   // Modification d'un agent (nom, téléphone, mot de passe)
+  const [editionAgent, setEditionAgent] = useState<string | null>(null)
   const [editNom, setEditNom] = useState('')
   const [editTel, setEditTel] = useState('')
   const [editMdp, setEditMdp] = useState('')
   const [modifEnCours, setModifEnCours] = useState(false)
+  const [messageOk, setMessageOk] = useState<string | null>(null)
 
   const { donnees: agents, chargement, recharger } = useDonneesCachees<Agent[]>(
     `agents_${pressingId}`,
@@ -107,23 +109,30 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
   }
 
   function basculerAgent(agent: Agent, dejaOuvert: boolean) {
-    if (dejaOuvert) {
-      setAgentOuvert(null)
-      return
-    }
+    setEditionAgent(null)
+    setAgentOuvert(dejaOuvert ? null : agent.id)
+  }
+
+  function commencerEdition(agent: Agent) {
     setEditNom(agent.nom)
     setEditTel(agent.telephone)
     setEditMdp('')
-    setAgentOuvert(agent.id)
+    setMessageOk(null)
+    setErreur(null)
+    setEditionAgent(agent.id)
   }
 
   async function enregistrerModifications(agent: Agent) {
     setErreur(null)
+    setMessageOk(null)
     const corps: Record<string, unknown> = { agent_id: agent.id }
     if (editNom.trim() !== agent.nom) corps.nom = editNom
     if (editTel.trim() !== agent.telephone) corps.telephone = editTel
     if (editMdp) corps.mot_de_passe = editMdp
-    if (Object.keys(corps).length === 1) return
+    if (Object.keys(corps).length === 1) {
+      setEditionAgent(null)
+      return
+    }
 
     setModifEnCours(true)
     try {
@@ -137,6 +146,12 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
         setErreur(data.erreur ?? 'La modification a échoué.')
       } else {
         setEditMdp('')
+        setEditionAgent(null)
+        setMessageOk(
+          `✅ Modifications de ${editNom.trim() || agent.nom} enregistrées` +
+            (corps.mot_de_passe ? ' (nouveau mot de passe actif)' : '') +
+            (corps.telephone ? ` — connexion avec le ${editTel.trim()}` : '')
+        )
         await recharger()
       }
     } catch {
@@ -173,6 +188,9 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
 
       {erreur && (
         <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>
+      )}
+      {messageOk && (
+        <p className="rounded-card bg-green-50 px-3 py-2 text-sm text-green-700">{messageOk}</p>
       )}
 
       {/* ---- Formulaire de création ---- */}
@@ -273,7 +291,16 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
 
                 {ouvert && (
                   <div className="space-y-3 border-t border-gray-100 p-3">
-                    {/* ---- Modifier l'agent ---- */}
+                    {/* ---- Modifier l'agent (sur demande) ---- */}
+                    {editionAgent !== agent.id ? (
+                      <Button
+                        variante="outline"
+                        className="min-h-[40px] w-full py-2 text-sm"
+                        onClick={() => commencerEdition(agent)}
+                      >
+                        ✏️ Modifier l'agent (nom, téléphone, mot de passe)
+                      </Button>
+                    ) : (
                     <div className="space-y-2 rounded-card bg-gray-50 p-3">
                       <p className="text-xs font-semibold uppercase text-gray-500">
                         Modifier l'agent
@@ -304,18 +331,28 @@ export default function GestionAgents({ pressingId }: GestionAgentsProps) {
                           className="w-full rounded-card border border-gray-300 px-3 py-2 text-sm outline-none focus:border-pressci-primary"
                         />
                       </div>
-                      <Button
-                        className="min-h-[40px] w-full py-2 text-sm"
-                        chargement={modifEnCours}
-                        onClick={() => void enregistrerModifications(agent)}
-                      >
-                        Enregistrer les modifications
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          className="min-h-[40px] flex-1 py-2 text-sm"
+                          chargement={modifEnCours}
+                          onClick={() => void enregistrerModifications(agent)}
+                        >
+                          Enregistrer les modifications
+                        </Button>
+                        <Button
+                          variante="ghost"
+                          className="min-h-[40px] py-2 text-sm"
+                          onClick={() => setEditionAgent(null)}
+                        >
+                          Annuler
+                        </Button>
+                      </div>
                       <p className="text-[11px] text-gray-400">
                         Le téléphone sert d'identifiant : s'il change, l'agent se connectera avec
                         le nouveau numéro. Laissez le mot de passe vide pour ne pas le changer.
                       </p>
                     </div>
+                    )}
 
                     <div className="grid gap-1.5 sm:grid-cols-2">
                       {(Object.keys(PERMISSIONS_LABELS) as Array<keyof PermissionsAgent>).map(
