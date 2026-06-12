@@ -7,6 +7,7 @@ import { rechercherClients } from '@/hooks/useClients'
 import { createClient } from '@/lib/supabase/client'
 import {
   datePrevueDefaut,
+  emojiArticle,
   formatFCFA,
   MODE_PAIEMENT_LABELS,
   normaliserTelephone,
@@ -31,21 +32,6 @@ const MODES: ModePaiement[] = [
   'moov_money',
   'a_recuperer',
 ]
-
-/** Petite icône par type d'article pour les tuiles du catalogue. */
-function emojiArticle(nom: string): string {
-  const n = nom.toLowerCase()
-  if (n.includes('chemise')) return '👔'
-  if (n.includes('pantalon') || n.includes('jean')) return '👖'
-  if (n.includes('costume')) return '🤵'
-  if (n.includes('robe')) return '👗'
-  if (n.includes('jupe')) return '👗'
-  if (n.includes('boubou')) return '🧕'
-  if (n.includes('drap') || n.includes('couette') || n.includes('couverture')) return '🛏️'
-  if (n.includes('veste') || n.includes('manteau') || n.includes('blouson')) return '🧥'
-  if (n.includes('chaussure')) return '👞'
-  return '🧺'
-}
 
 export default function TicketForm({ pressings, pressingInitial }: TicketFormProps) {
   const router = useRouter()

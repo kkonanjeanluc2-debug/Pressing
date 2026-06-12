@@ -51,6 +51,16 @@ const LIENS: Lien[] = [
     ),
   },
   {
+    href: '/vetements',
+    label: 'Vêtements',
+    actif: (p) => p.startsWith('/vetements'),
+    icone: (
+      <svg className={ICONE} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 3l5 3-2.5 4L16 8.5V21H8V8.5L5.5 10 3 6l5-3a4 4 0 008 0z" />
+      </svg>
+    ),
+  },
+  {
     href: '/clients',
     label: 'Clients',
     actif: (p) => p.startsWith('/clients'),

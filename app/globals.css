@@ -54,10 +54,64 @@ textarea {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Impression : conserver les couleurs de fond (rapport de caisse) */
+/* ================= Mode sombre =================
+   Surcharges ciblées des utilitaires clairs : permet un thème
+   sombre cohérent sans réécrire chaque composant. */
+.dark body {
+  background-color: #07120e;
+  color: #e8f3ee;
+}
+.dark .bg-gray-50 { background-color: #07120e !important; }
+.dark .bg-white { background-color: #102420 !important; }
+.dark .bg-gray-100 { background-color: #16302a !important; }
+.dark .bg-pressci-light { background-color: rgba(159, 225, 203, 0.14) !important; }
+.dark .text-gray-900,
+.dark .text-gray-800 { color: #e8f3ee !important; }
+.dark .text-gray-700,
+.dark .text-gray-600 { color: #bdd6cc !important; }
+.dark .text-gray-500 { color: #93b3a7 !important; }
+.dark .text-gray-400 { color: #7b998e !important; }
+.dark .text-pressci-dark { color: #9fe1cb !important; }
+.dark .border-gray-100 { border-color: #1a342d !important; }
+.dark .border-gray-200,
+.dark .border-gray-300 { border-color: #25473e !important; }
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1a342d !important; }
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #0d211c;
+  color: #e8f3ee;
+  border-color: #25473e;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #6f8d82; }
+.dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.12) !important; }
+.dark .bg-green-100 { background-color: rgba(34, 197, 94, 0.2) !important; }
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12) !important; }
+.dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.2) !important; }
+.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.12) !important; }
+.dark .bg-amber-50,
+.dark .bg-amber-100,
+.dark .bg-yellow-50 { background-color: rgba(245, 158, 11, 0.14) !important; }
+.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12) !important; }
+.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.14) !important; }
+.dark .bg-violet-100 { background-color: rgba(139, 92, 246, 0.2) !important; }
+.dark .shadow-sm,
+.dark .shadow-lg,
+.dark .shadow-md { --tw-shadow-color: rgba(0, 0, 0, 0.6); }
+
+/* Impression : conserver les couleurs de fond (rapport de caisse)
+   et toujours imprimer sur fond clair, même en mode sombre */
 @media print {
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+  .dark body { background-color: #fff; color: #111827; }
+  .dark .bg-white { background-color: #fff !important; }
+  .dark .bg-gray-50 { background-color: #f9fafb !important; }
+  .dark .text-gray-900, .dark .text-gray-800 { color: #111827 !important; }
+  .dark .text-gray-700, .dark .text-gray-600 { color: #374151 !important; }
+  .dark .text-pressci-dark { color: #085041 !important; }
+  .dark .border-gray-200, .dark .border-gray-300 { border-color: #e5e7eb !important; }
 }

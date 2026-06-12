@@ -1,3 +1,4 @@
+import { SCRIPT_THEME } from '@/lib/theme'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
@@ -22,7 +23,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        {/* Applique le thème avant le premier rendu (pas de flash) */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_THEME }} />
+      </head>
       <body>
         <div className="min-h-screen bg-gray-50">{children}</div>
       </body>

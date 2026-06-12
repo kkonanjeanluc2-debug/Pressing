@@ -108,6 +108,21 @@ export function emailAgent(tel: string): string {
   return `${normaliserTelephone(tel)}@agents.pressci.app`
 }
 
+/** Petite icône par type de vêtement (catalogue, listes). */
+export function emojiArticle(nom: string): string {
+  const n = nom.toLowerCase()
+  if (n.includes('chemise')) return '👔'
+  if (n.includes('pantalon') || n.includes('jean')) return '👖'
+  if (n.includes('costume')) return '🤵'
+  if (n.includes('robe')) return '👗'
+  if (n.includes('jupe')) return '👗'
+  if (n.includes('boubou')) return '🧕'
+  if (n.includes('drap') || n.includes('couette') || n.includes('couverture')) return '🛏️'
+  if (n.includes('veste') || n.includes('manteau') || n.includes('blouson')) return '🧥'
+  if (n.includes('chaussure')) return '👞'
+  return '🧺'
+}
+
 /** Message SMS type "linge prêt" */
 export function messageSmsPret(nomClient: string, nomPressing: string, numeroTicket: string): string {
   return `Bonjour ${nomClient}, votre linge est prêt au ${nomPressing}. Ticket ${numeroTicket}. À bientôt !`
