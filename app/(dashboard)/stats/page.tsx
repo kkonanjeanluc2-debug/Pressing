@@ -3,6 +3,7 @@
 import Card from '@/components/ui/Card'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
+import { useProfil } from '@/hooks/useProfil'
 import { createClient } from '@/lib/supabase/client'
 import { formatFCFA, toInputDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -54,6 +55,7 @@ const PERIODES: Array<{ id: Periode; label: string }> = [
 
 export default function StatsPage() {
   const { pressing } = usePressing()
+  const { peut, chargement: chargementProfil } = useProfil()
   const [periode, setPeriode] = useState<Periode>('semaine')
   const [dateDebut, setDateDebut] = useState(toInputDate(new Date(Date.now() - 30 * 86400_000)))
   const [dateFin, setDateFin] = useState(toInputDate(new Date()))
@@ -157,6 +159,18 @@ export default function StatsPage() {
     },
     'Impossible de charger les statistiques. Vérifiez votre réseau.'
   )
+
+  if (!chargementProfil && !peut('voir_stats')) {
+    return (
+      <div className="px-4 py-16 text-center text-gray-600">
+        <p className="mb-2 text-4xl">🔒</p>
+        <p className="font-semibold">Accès non autorisé.</p>
+        <p className="mt-1 text-sm">
+          Le propriétaire ne vous a pas donné l’accès aux rapports.
+        </p>
+      </div>
+    )
+  }
 
   const encaissements = donnees?.encaissements ?? []
   const topArticles = donnees?.topArticles ?? []

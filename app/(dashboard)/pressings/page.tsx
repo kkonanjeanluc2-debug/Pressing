@@ -6,7 +6,7 @@ import { formatFCFA } from '@/lib/utils'
 import Link from 'next/link'
 
 export default function PressingsPage() {
-  const { pressing: pressingActif, pressings, chargement, changerPressing } = usePressing()
+  const { pressing: pressingActif, pressings, chargement } = usePressing()
   const { resumes, chargement: chargementResumes } = usePressingsResume(pressings)
 
   if (chargement) {
@@ -55,9 +55,10 @@ export default function PressingsPage() {
           ).map(({ pressing, ca_jour, depots_jour, creances, tickets_actifs }) => {
             const actif = pressing.id === pressingActif?.id
             return (
-              <div
+              <Link
                 key={pressing.id}
-                className={`rounded-card border bg-white p-4 ${
+                href={`/pressings/${pressing.id}`}
+                className={`block rounded-card border bg-white p-4 transition-shadow hover:shadow-md ${
                   actif ? 'border-pressci-primary ring-1 ring-pressci-primary' : 'border-gray-200'
                 }`}
               >
@@ -112,28 +113,15 @@ export default function PressingsPage() {
                   </div>
                 </div>
 
-                <p className="mb-3 text-xs text-gray-400">
-                  {depots_jour} dépôt{depots_jour > 1 ? 's' : ''} aujourd’hui
-                </p>
-
-                {/* Actions */}
-                {actif ? (
-                  <Link
-                    href="/"
-                    className="block rounded-card bg-pressci-light py-2 text-center text-sm font-semibold text-pressci-primary"
-                  >
-                    Voir le tableau de bord
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => changerPressing(pressing.id)}
-                    className="w-full rounded-card border border-pressci-primary py-2 text-sm font-semibold text-pressci-primary transition-colors hover:bg-pressci-light"
-                  >
-                    Définir comme actif
-                  </button>
-                )}
-              </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-gray-400">
+                    {depots_jour} dépôt{depots_jour > 1 ? 's' : ''} aujourd’hui
+                  </p>
+                  <span className="text-sm font-semibold text-pressci-primary">
+                    Voir les détails →
+                  </span>
+                </div>
+              </Link>
             )
           })}
         </div>

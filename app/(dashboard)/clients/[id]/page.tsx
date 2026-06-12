@@ -5,12 +5,14 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import { useClient } from '@/hooks/useClients'
 import { usePressing } from '@/hooks/usePressing'
+import { useProfil } from '@/hooks/useProfil'
 import { formatFCFA, messageSmsRelance } from '@/lib/utils'
 import Link from 'next/link'
 import { useState } from 'react'
 
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
   const { pressing } = usePressing()
+  const { peut } = useProfil()
   const { client, tickets, chargement, erreur } = useClient(params.id)
   const [envoiSms, setEnvoiSms] = useState(false)
   const [messageSms, setMessageSms] = useState<string | null>(null)
@@ -109,7 +111,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         </div>
       </Card>
 
-      {client.solde_creance > 0 && (
+      {client.solde_creance > 0 && peut('envoyer_sms') && (
         <Button
           pleineLargeur
           variante="secondary"

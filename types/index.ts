@@ -85,6 +85,47 @@ export interface Encaissement {
   ticket?: Ticket
 }
 
+export interface PermissionsAgent {
+  creer_tickets: boolean
+  changer_statut: boolean
+  encaisser: boolean
+  envoyer_sms: boolean
+  gerer_clients: boolean
+  voir_caisse: boolean
+  voir_stats: boolean
+}
+
+export interface Agent {
+  id: string
+  pressing_id: string
+  user_id: string
+  nom: string
+  telephone: string
+  actif: boolean
+  permissions: PermissionsAgent
+  created_at: string
+}
+
+export const PERMISSIONS_DEFAUT: PermissionsAgent = {
+  creer_tickets: true,
+  changer_statut: true,
+  encaisser: true,
+  envoyer_sms: true,
+  gerer_clients: true,
+  voir_caisse: false,
+  voir_stats: false,
+}
+
+export const PERMISSIONS_LABELS: Record<keyof PermissionsAgent, string> = {
+  creer_tickets: 'Créer des dépôts',
+  changer_statut: 'Changer le statut des tickets',
+  encaisser: 'Encaisser les paiements',
+  envoyer_sms: 'Envoyer des SMS aux clients',
+  gerer_clients: 'Gérer les clients',
+  voir_caisse: 'Voir la caisse du jour',
+  voir_stats: 'Voir les rapports',
+}
+
 export interface DashboardStats {
   tickets_actifs: number
   tickets_prets: number

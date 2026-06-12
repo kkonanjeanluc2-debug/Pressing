@@ -1,6 +1,7 @@
 'use client'
 
 import PressingSwitcher from '@/components/ui/PressingSwitcher'
+import { useProfil } from '@/hooks/useProfil'
 import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -97,8 +98,20 @@ const LIENS: Lien[] = [
 export default function SideNav() {
   const pathname = usePathname()
   const router = useRouter()
+  const { role, agent, peut } = useProfil()
   const [reduite, setReduite] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
+
+  // Menu filtré selon le rôle et les permissions de l'agent
+  const liens = LIENS.filter((lien) => {
+    if (role === 'agent') {
+      if (lien.href === '/pressings' || lien.href === '/parametres') return false
+      if (lien.href === '/caisse' && !peut('voir_caisse')) return false
+      if (lien.href === '/stats' && !peut('voir_stats')) return false
+      if (lien.href === '/clients' && !peut('gerer_clients')) return false
+    }
+    return true
+  })
 
   useEffect(() => {
     setReduite(window.localStorage.getItem(CLE_SIDEBAR) === '1')
@@ -155,7 +168,7 @@ export default function SideNav() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {LIENS.map((lien) => {
+        {liens.map((lien) => {
           const actif = lien.actif(pathname)
           return (
             <Link
@@ -188,8 +201,12 @@ export default function SideNav() {
           </div>
           {!reduite && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{email ?? '…'}</p>
-              <p className="text-xs text-pressci-light/60">Propriétaire</p>
+              <p className="truncate text-sm font-semibold text-white">
+                {role === 'agent' ? agent?.nom ?? '…' : email ?? '…'}
+              </p>
+              <p className="text-xs text-pressci-light/60">
+                {role === 'agent' ? 'Agent' : 'Propriétaire'}
+              </p>
             </div>
           )}
         </div>

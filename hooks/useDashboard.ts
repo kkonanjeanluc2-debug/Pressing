@@ -26,7 +26,7 @@ function debutJour(d: Date): Date {
   return r
 }
 
-async function chargerDashboard(pressingId: string): Promise<DonneesDashboard> {
+async function chargerDashboard(pressingIds: string[]): Promise<DonneesDashboard> {
   const supabase = createClient()
 
   const maintenant = new Date()
@@ -40,31 +40,31 @@ async function chargerDashboard(pressingId: string): Promise<DonneesDashboard> {
       supabase
         .from('tickets')
         .select('id', { count: 'exact', head: true })
-        .eq('pressing_id', pressingId)
+        .in('pressing_id', pressingIds)
         .in('statut', ['nouveau', 'en_traitement', 'pret']),
       supabase
         .from('tickets')
         .select('id', { count: 'exact', head: true })
-        .eq('pressing_id', pressingId)
+        .in('pressing_id', pressingIds)
         .eq('statut', 'pret'),
       supabase
         .from('clients')
         .select('id', { count: 'exact', head: true })
-        .eq('pressing_id', pressingId),
+        .in('pressing_id', pressingIds),
       supabase
         .from('tickets')
         .select('montant_total, montant_paye')
-        .eq('pressing_id', pressingId)
+        .in('pressing_id', pressingIds)
         .neq('statut', 'annule'),
       supabase
         .from('encaissements')
         .select('montant, created_at')
-        .eq('pressing_id', pressingId)
+        .in('pressing_id', pressingIds)
         .gte('created_at', debut4Semaines.toISOString()),
       supabase
         .from('tickets')
         .select('*, client:clients(*)')
-        .eq('pressing_id', pressingId)
+        .in('pressing_id', pressingIds)
         .eq('statut', 'pret')
         .eq('sms_envoye', false)
         .lt('created_at', new Date(Date.now() - 24 * 3600_000).toISOString()),
@@ -126,30 +126,28 @@ async function chargerDashboard(pressingId: string): Promise<DonneesDashboard> {
 }
 
 /**
- * Statistiques du tableau de bord : affichage instantané via cache,
- * rafraîchissement en arrière-plan + temps réel (Supabase Realtime).
+ * Statistiques du tableau de bord, agrégées sur TOUS les pressings fournis
+ * (vue commune du propriétaire ; un agent n'a que son pressing).
+ * Affichage instantané via cache + temps réel (Supabase Realtime).
  */
-export function useDashboard(pressingId: string | null): UseDashboardResult {
+export function useDashboard(pressingIds: string[]): UseDashboardResult {
+  const cleIds = pressingIds.join('_')
   const { donnees, chargement, erreur, recharger } = useDonneesCachees<DonneesDashboard>(
-    pressingId ? `dashboard_${pressingId}` : null,
-    () => chargerDashboard(pressingId as string),
+    pressingIds.length > 0 ? `dashboard_${cleIds}` : null,
+    () => chargerDashboard(pressingIds),
     'Impossible de charger le tableau de bord. Vérifiez votre réseau.'
   )
 
   // Temps réel : recharge les stats à chaque changement sur les tickets
+  // (RLS limite les événements aux pressings de l'utilisateur)
   useEffect(() => {
-    if (!pressingId) return
+    if (pressingIds.length === 0) return
     const supabase = createClient()
     const canal = supabase
-      .channel(`dashboard-${pressingId}`)
+      .channel(`dashboard-${cleIds}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets',
-          filter: `pressing_id=eq.${pressingId}`,
-        },
+        { event: '*', schema: 'public', table: 'tickets' },
         () => void recharger()
       )
       .subscribe()
@@ -157,7 +155,8 @@ export function useDashboard(pressingId: string | null): UseDashboardResult {
     return () => {
       void supabase.removeChannel(canal)
     }
-  }, [pressingId, recharger])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleIds, recharger])
 
   return {
     stats: donnees?.stats ?? null,

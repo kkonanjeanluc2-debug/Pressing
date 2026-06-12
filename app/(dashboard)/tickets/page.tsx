@@ -2,6 +2,7 @@
 
 import TicketCard from '@/components/tickets/TicketCard'
 import { usePressing } from '@/hooks/usePressing'
+import { useProfil } from '@/hooks/useProfil'
 import { useTickets, type FiltreTickets } from '@/hooks/useTickets'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -19,6 +20,7 @@ function ListeTickets() {
   const filtreInitial = (searchParams.get('filtre') as FiltreTickets | null) ?? 'tous'
 
   const { pressing } = usePressing()
+  const { peut } = useProfil()
   const [filtre, setFiltre] = useState<FiltreTickets>(filtreInitial)
   const [recherche, setRecherche] = useState('')
   const { tickets, chargement, erreur, recharger } = useTickets(pressing?.id ?? null, filtre)
@@ -58,12 +60,14 @@ function ListeTickets() {
     >
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-pressci-dark">Tickets</h1>
-        <Link
-          href="/tickets/nouveau"
-          className="rounded-full bg-pressci-primary px-4 py-2 text-sm font-semibold text-white"
-        >
-          + Nouveau
-        </Link>
+        {peut('creer_tickets') && (
+          <Link
+            href="/tickets/nouveau"
+            className="rounded-full bg-pressci-primary px-4 py-2 text-sm font-semibold text-white"
+          >
+            + Nouveau
+          </Link>
+        )}
       </header>
 
       {rafraichissement && (

@@ -3,6 +3,7 @@
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
+import { useProfil } from '@/hooks/useProfil'
 import { changerStatutTicket } from '@/hooks/useTickets'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -26,6 +27,7 @@ interface TicketDetailProps {
 const MODES_ENCAISSEMENT: ModePaiement[] = ['cash', 'wave', 'orange_money']
 
 export default function TicketDetail({ ticket, pressing, recharger, nouveauticket }: TicketDetailProps) {
+  const { peut } = useProfil()
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -258,15 +260,15 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         </Card>
       )}
 
-      {/* ---- Actions selon le statut ---- */}
+      {/* ---- Actions selon le statut (et les permissions de l'agent) ---- */}
       <div className="space-y-2">
-        {ticket.statut === 'nouveau' && (
+        {ticket.statut === 'nouveau' && peut('changer_statut') && (
           <Button pleineLargeur chargement={enCours} onClick={() => void changerStatut('en_traitement')}>
             Démarrer le traitement
           </Button>
         )}
 
-        {ticket.statut === 'en_traitement' && (
+        {ticket.statut === 'en_traitement' && peut('changer_statut') && (
           <Button pleineLargeur chargement={enCours} onClick={() => void changerStatut('pret')}>
             Marquer prêt
           </Button>
@@ -274,18 +276,21 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
 
         {ticket.statut === 'pret' && (
           <>
-            {!ticket.sms_envoye && (
+            {!ticket.sms_envoye && peut('envoyer_sms') && (
               <Button pleineLargeur chargement={enCours} variante="secondary" onClick={() => void envoyerSms()}>
                 📱 Notifier le client par SMS
               </Button>
             )}
-            <Button pleineLargeur chargement={enCours} onClick={() => void marquerRecupereSansEncaissement()}>
-              Marquer récupéré {resteAPayer > 0 && `(encaisser ${formatFCFA(resteAPayer)})`}
-            </Button>
+            {peut('changer_statut') && (resteAPayer === 0 || peut('encaisser')) && (
+              <Button pleineLargeur chargement={enCours} onClick={() => void marquerRecupereSansEncaissement()}>
+                Marquer récupéré {resteAPayer > 0 && `(encaisser ${formatFCFA(resteAPayer)})`}
+              </Button>
+            )}
           </>
         )}
 
-        {(ticket.statut === 'nouveau' || ticket.statut === 'en_traitement') && (
+        {(ticket.statut === 'nouveau' || ticket.statut === 'en_traitement') &&
+          peut('changer_statut') && (
           <Button
             pleineLargeur
             variante="ghost"

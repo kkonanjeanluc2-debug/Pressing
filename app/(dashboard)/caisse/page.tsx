@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
+import { useProfil } from '@/hooks/useProfil'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate, formatFCFA, MODE_PAIEMENT_LABELS, toInputDate } from '@/lib/utils'
 import type { ModePaiement } from '@/types'
@@ -32,6 +33,7 @@ function debutJour(decalageJours = 0): Date {
 
 export default function CaissePage() {
   const { pressing } = usePressing()
+  const { peut, chargement: chargementProfil } = useProfil()
 
   const { donnees, chargement, erreur } = useDonneesCachees<DonneesCaisse>(
     pressing ? `caisse_${pressing.id}_${toInputDate(new Date())}` : null,
@@ -66,6 +68,18 @@ export default function CaissePage() {
     },
     'Impossible de charger la caisse. Vérifiez votre réseau.'
   )
+
+  if (!chargementProfil && !peut('voir_caisse')) {
+    return (
+      <div className="px-4 py-16 text-center text-gray-600">
+        <p className="mb-2 text-4xl">🔒</p>
+        <p className="font-semibold">Accès non autorisé.</p>
+        <p className="mt-1 text-sm">
+          Le propriétaire ne vous a pas donné l’accès à la caisse.
+        </p>
+      </div>
+    )
+  }
 
   const encaissements = donnees?.encaissements ?? []
   const totalJour = encaissements.reduce((s, e) => s + e.montant, 0)

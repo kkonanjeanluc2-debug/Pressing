@@ -2,10 +2,24 @@
 
 import TicketForm from '@/components/tickets/TicketForm'
 import { usePressing } from '@/hooks/usePressing'
+import { useProfil } from '@/hooks/useProfil'
 import Link from 'next/link'
 
 export default function NouveauTicketPage() {
   const { pressing, chargement } = usePressing()
+  const { peut, chargement: chargementProfil } = useProfil()
+
+  if (!chargementProfil && !peut('creer_tickets')) {
+    return (
+      <div className="px-4 py-16 text-center text-gray-600">
+        <p className="mb-2 text-4xl">🔒</p>
+        <p className="font-semibold">Accès non autorisé.</p>
+        <p className="mt-1 text-sm">
+          Le propriétaire ne vous a pas donné le droit de créer des dépôts.
+        </p>
+      </div>
+    )
+  }
 
   if (chargement) {
     return (

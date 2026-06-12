@@ -92,6 +92,14 @@ export function telephoneInternational(tel: string): string {
   return `+225${normaliserTelephone(tel)}`
 }
 
+/**
+ * Les agents se connectent avec leur téléphone : on dérive un email
+ * synthétique pour Supabase Auth ("0707070707" → "0707070707@agents.pressci.app").
+ */
+export function emailAgent(tel: string): string {
+  return `${normaliserTelephone(tel)}@agents.pressci.app`
+}
+
 /** Message SMS type "linge prêt" */
 export function messageSmsPret(nomClient: string, nomPressing: string, numeroTicket: string): string {
   return `Bonjour ${nomClient}, votre linge est prêt au ${nomPressing}. Ticket ${numeroTicket}. À bientôt !`

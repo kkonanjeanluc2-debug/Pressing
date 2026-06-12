@@ -17,7 +17,11 @@
       "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" rm -r --cached supabase/.temp --quiet)",
       "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" add .gitignore)",
       "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" remote add origin https://github.com/kkonanjeanluc2-debug/Pressing.git)",
-      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" push -u origin main)"
+      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" push -u origin main)",
+      "PowerShell(npx supabase db push 2>&1)",
+      "PowerShell($key = \\(Get-Content \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\\\\.env.local\" | Where-Object { $_ -match '^SUPABASE_SERVICE_ROLE_KEY=' }\\) -replace '^SUPABASE_SERVICE_ROLE_KEY=',''; $headers = @{ apikey = $key; Authorization = \"Bearer $key\" }; try { $r = Invoke-WebRequest -Uri \"https://pzohucubglhbongyuejd.supabase.co/rest/v1/agents?select=id&limit=1\" -Headers $headers -UseBasicParsing; \"Table agents OK: $\\($r.StatusCode\\)\" } catch { \"ERREUR: $\\($_.ErrorDetails.Message\\)\" })",
+      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" add -A)",
+      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" push)"
     ]
   }
 }

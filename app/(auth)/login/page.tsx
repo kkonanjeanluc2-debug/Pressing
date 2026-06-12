@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
+import { emailAgent, validerTelephone } from '@/lib/utils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
@@ -21,8 +22,11 @@ export default function LoginPage() {
     setChargement(true)
 
     const supabase = createClient()
+    // Les agents se connectent avec leur numéro de téléphone :
+    // on le convertit en email synthétique pour Supabase Auth.
+    const identifiant = validerTelephone(email) ? emailAgent(email) : email
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: identifiant,
       password: motDePasse,
     })
 
@@ -30,7 +34,7 @@ export default function LoginPage() {
       setChargement(false)
       setErreur(
         error.message.includes('Invalid login credentials')
-          ? 'Email ou mot de passe incorrect. Vérifiez et réessayez.'
+          ? 'Identifiant ou mot de passe incorrect. Vérifiez et réessayez.'
           : 'Connexion impossible pour le moment. Vérifiez votre réseau et réessayez.'
       )
       return
@@ -54,13 +58,13 @@ export default function LoginPage() {
 
       <form onSubmit={seConnecter} className="space-y-4">
         <Input
-          label="Email"
-          type="email"
+          label="Email ou téléphone (agent)"
+          type="text"
           name="email"
-          placeholder="vous@exemple.com"
+          placeholder="vous@exemple.com ou 07 07 07 07 07"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
+          autoComplete="username"
           required
         />
         <Input

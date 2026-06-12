@@ -13,16 +13,24 @@ interface UseTicketsResult {
   recharger: () => Promise<void>
 }
 
-/** Liste des tickets du pressing (affichage instantané via cache). */
-export function useTickets(pressingId: string | null, filtre: FiltreTickets): UseTicketsResult {
+/**
+ * Liste des tickets (affichage instantané via cache).
+ * Accepte un pressing ou plusieurs (vue globale du tableau de bord).
+ */
+export function useTickets(
+  pressingIds: string | string[] | null,
+  filtre: FiltreTickets
+): UseTicketsResult {
+  const ids = pressingIds === null ? [] : Array.isArray(pressingIds) ? pressingIds : [pressingIds]
+
   const { donnees, chargement, erreur, recharger } = useDonneesCachees<Ticket[]>(
-    pressingId ? `tickets_${pressingId}_${filtre}` : null,
+    ids.length > 0 ? `tickets_${ids.join('_')}_${filtre}` : null,
     async () => {
       const supabase = createClient()
       let requete = supabase
         .from('tickets')
         .select('*, client:clients(*), articles:articles_ticket(*)')
-        .eq('pressing_id', pressingId as string)
+        .in('pressing_id', ids)
         .order('date_depot', { ascending: false })
         .limit(200)
 
