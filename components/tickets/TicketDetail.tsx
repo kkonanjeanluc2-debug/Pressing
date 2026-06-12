@@ -160,7 +160,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
           </p>
           <p>
             <span className="text-gray-500">Déposé le : </span>
-            <span className="font-medium">{formatDate(ticket.date_depot)}</span>
+            <span className="font-medium">{formatDateHeure(ticket.date_depot)}</span>
           </p>
           <p>
             <span className="text-gray-500">Retrait prévu : </span>
@@ -171,7 +171,9 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
           {ticket.date_recuperation && (
             <p>
               <span className="text-gray-500">Récupéré le : </span>
-              <span className="font-medium">{formatDateHeure(ticket.date_recuperation)}</span>
+              <span className="font-semibold text-green-700">
+                {formatDateHeure(ticket.date_recuperation)}
+              </span>
             </p>
           )}
         </div>
@@ -307,7 +309,11 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
 
         {ticket.statut === 'recupere' && (
           <p className="text-center text-sm text-gray-400">
-            Ticket clôturé — reçu ci-dessus 🧾
+            Ticket clôturé
+            {ticket.date_recuperation
+              ? ` — récupéré le ${formatDateHeure(ticket.date_recuperation)}`
+              : ''}{' '}
+            🧾
           </p>
         )}
       </div>

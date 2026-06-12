@@ -1,5 +1,5 @@
 import Badge from '@/components/ui/Badge'
-import { estEnRetard, formatDateCourte, formatFCFA } from '@/lib/utils'
+import { estEnRetard, formatDateCourte, formatFCFA, formatHeure } from '@/lib/utils'
 import type { Ticket } from '@/types'
 import Link from 'next/link'
 
@@ -22,10 +22,17 @@ export default function TicketCard({ ticket }: TicketCardProps) {
         <p className="font-medium text-gray-800">{ticket.client?.nom ?? 'Client'}</p>
 
         <div className="mt-2 flex items-center justify-between text-sm">
-          <span className={enRetard ? 'font-semibold text-red-600' : 'text-gray-500'}>
-            {enRetard ? '⚠ Retrait dépassé — ' : 'Prévu le '}
-            {formatDateCourte(ticket.date_prevue)}
-          </span>
+          {ticket.statut === 'recupere' && ticket.date_recuperation ? (
+            <span className="font-medium text-green-700">
+              ✓ Récupéré le {formatDateCourte(ticket.date_recuperation)} à{' '}
+              {formatHeure(ticket.date_recuperation)}
+            </span>
+          ) : (
+            <span className={enRetard ? 'font-semibold text-red-600' : 'text-gray-500'}>
+              {enRetard ? '⚠ Retrait dépassé — ' : 'Prévu le '}
+              {formatDateCourte(ticket.date_prevue)}
+            </span>
+          )}
           <span className="font-semibold text-gray-800">{formatFCFA(ticket.montant_total)}</span>
         </div>
 

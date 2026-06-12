@@ -1,6 +1,6 @@
 import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
-import { formatDateCourte, formatFCFA } from '@/lib/utils'
+import { formatDateCourte, formatFCFA, formatHeure } from '@/lib/utils'
 import type { Ticket } from '@/types'
 import Link from 'next/link'
 
@@ -38,8 +38,10 @@ export default function ActiviteRecente({ tickets }: ActiviteRecenteProps) {
                   {t.numero} — {t.client?.nom ?? 'Client'}
                 </p>
                 <p className="text-xs text-gray-400">
-                  Déposé le {formatDateCourte(t.date_depot)} ·{' '}
-                  {(t.articles ?? []).reduce((s, a) => s + a.quantite, 0)} pièce
+                  {t.statut === 'recupere' && t.date_recuperation
+                    ? `Récupéré le ${formatDateCourte(t.date_recuperation)} à ${formatHeure(t.date_recuperation)}`
+                    : `Déposé le ${formatDateCourte(t.date_depot)}`}{' '}
+                  · {(t.articles ?? []).reduce((s, a) => s + a.quantite, 0)} pièce
                   {(t.articles ?? []).reduce((s, a) => s + a.quantite, 0) > 1 ? 's' : ''}
                 </p>
               </div>
