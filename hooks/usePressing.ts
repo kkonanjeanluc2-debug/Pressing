@@ -37,7 +37,12 @@ export function changerPressingActif(id: string): void {
  * est mémorisé dans le navigateur et partagé entre tous les composants.
  */
 export function usePressing(): UsePressingResult {
-  const [actifId, setActifId] = useState<string | null>(lirePressingActif)
+  // Initialisé à null puis lu après montage (cohérence SSR/client)
+  const [actifId, setActifId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setActifId(lirePressingActif())
+  }, [])
 
   const { donnees, chargement, erreur, recharger } = useDonneesCachees<Pressing[]>(
     'pressings',

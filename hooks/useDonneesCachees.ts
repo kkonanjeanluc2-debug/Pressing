@@ -30,10 +30,11 @@ export function useDonneesCachees<T>(
   const messageRef = useRef(messageErreur)
   messageRef.current = messageErreur
 
-  const [donnees, setDonnees] = useState<T | null>(() => (cle ? lireCache<T>(cle) : null))
-  const [chargement, setChargement] = useState<boolean>(() =>
-    cle ? lireCache<T>(cle) === null : true
-  )
+  // Important : l'état initial doit être identique côté serveur et côté
+  // client (pas de lecture du cache ici), sinon erreur d'hydratation React.
+  // Le cache est appliqué dans l'effet, juste après le montage.
+  const [donnees, setDonnees] = useState<T | null>(null)
+  const [chargement, setChargement] = useState<boolean>(true)
   const [erreur, setErreur] = useState<string | null>(null)
 
   const recharger = useCallback(async () => {
