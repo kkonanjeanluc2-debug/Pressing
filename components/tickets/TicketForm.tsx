@@ -12,13 +12,15 @@ import {
   normaliserTelephone,
   validerTelephone,
 } from '@/lib/utils'
-import type { ArticleFormItem, Client, ModePaiement, Tarif } from '@/types'
+import type { ArticleFormItem, Client, ModePaiement, Pressing, Tarif } from '@/types'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 
 interface TicketFormProps {
-  pressingId: string
+  pressings: Pressing[]
+  /** Pressing présélectionné (ex : depuis « Travailler dans ce pressing ») */
+  pressingInitial?: string | null
 }
 
 const MODES: ModePaiement[] = ['cash', 'wave', 'orange_money', 'a_recuperer']
@@ -38,9 +40,16 @@ function emojiArticle(nom: string): string {
   return '🧺'
 }
 
-export default function TicketForm({ pressingId }: TicketFormProps) {
+export default function TicketForm({ pressings, pressingInitial }: TicketFormProps) {
   const router = useRouter()
   const supabase = createClient()
+
+  // Pressing dans lequel le dépôt est créé
+  const [pressingId, setPressingId] = useState<string>(() =>
+    pressingInitial && pressings.some((p) => p.id === pressingInitial)
+      ? pressingInitial
+      : pressings[0]?.id ?? ''
+  )
 
   // Client
   const [rechercheTel, setRechercheTel] = useState('')
@@ -332,6 +341,36 @@ export default function TicketForm({ pressingId }: TicketFormProps) {
         <div className="space-y-4 lg:grid lg:grid-cols-5 lg:items-start lg:gap-4 lg:space-y-0">
           {/* ====== Colonne gauche : client, panier, paiement ====== */}
           <div className="space-y-4 lg:col-span-3">
+            {/* ---- Pressing cible (propriétaire multi-pressings) ---- */}
+            {pressings.length > 1 && (
+              <Card>
+                <label
+                  htmlFor="pressing_cible"
+                  className="mb-1 block text-sm font-semibold text-gray-700"
+                >
+                  Pressing
+                </label>
+                <select
+                  id="pressing_cible"
+                  value={pressingId}
+                  onChange={(e) => {
+                    setPressingId(e.target.value)
+                    // Catalogue, tarifs et clients diffèrent : on repart à zéro
+                    setArticles([])
+                    reinitialiserClient()
+                  }}
+                  className="w-full rounded-card border border-gray-300 bg-white px-3 py-2.5 outline-none focus:border-pressci-primary"
+                >
+                  {pressings.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nom}
+                      {p.commune ? ` — ${p.commune}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </Card>
+            )}
+
             {/* ---- Client ---- */}
             <Card>
               <h2 className="mb-3 text-sm font-semibold text-gray-700">Client</h2>

@@ -6,18 +6,32 @@ import KpiGrid from '@/components/dashboard/KpiGrid'
 import RevenueChart from '@/components/dashboard/RevenueChart'
 import CreerPressing from '@/components/onboarding/CreerPressing'
 import Card from '@/components/ui/Card'
-import PressingSwitcher from '@/components/ui/PressingSwitcher'
 import { useDashboard } from '@/hooks/useDashboard'
-import { changerPressingActif, usePressing } from '@/hooks/usePressing'
+import { usePressing } from '@/hooks/usePressing'
 import { usePressingsResume } from '@/hooks/usePressingsResume'
 import { useProfil } from '@/hooks/useProfil'
 import { useTickets } from '@/hooks/useTickets'
-import { formatFCFA } from '@/lib/utils'
+import { viderCache } from '@/lib/cache'
+import { createClient } from '@/lib/supabase/client'
+import { formatFCFA, formatHeure } from '@/lib/utils'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function DashboardPage() {
+  const router = useRouter()
   const { pressing, pressings, chargement: chargementPressing, recharger } = usePressing()
-  const { role, peut } = useProfil()
+  const { role, agent, peut } = useProfil()
+
+  async function seDeconnecterAgent() {
+    const supabase = createClient()
+    if (agent) {
+      await supabase.rpc('fermer_pressing', { p_pressing_id: agent.pressing_id })
+    }
+    await supabase.auth.signOut()
+    viderCache()
+    router.push('/login')
+    router.refresh()
+  }
   // Tableau de bord COMMUN : agrégé sur tous les pressings du propriétaire
   // (un agent n'a accès qu'à son pressing via RLS)
   const idsPressings = pressings.map((p) => p.id)
@@ -50,25 +64,22 @@ export default function DashboardPage() {
       <CreerPressing
         titre="Créer mon pressing"
         sousTitre="Dernière étape avant de commencer"
-        surCreation={(id) => {
-          changerPressingActif(id)
-          recharger()
-        }}
+        surCreation={() => recharger()}
       />
     )
   }
 
   return (
     <div className="space-y-4 px-4 pt-5">
-      {/* En-tête mobile : pressing actif + paramètres */}
+      {/* En-tête mobile */}
       <header className="flex items-center justify-between lg:hidden">
         <div>
           <p className="text-sm text-gray-500">Bonjour 👋</p>
-          <h1>
-            <PressingSwitcher className="text-xl" />
+          <h1 className="text-xl font-bold text-pressci-dark">
+            {pressings.length > 1 ? 'Vos pressings' : pressing.nom}
           </h1>
         </div>
-        {role === 'proprietaire' && (
+        {role === 'proprietaire' ? (
           <Link
             href="/parametres"
             aria-label="Paramètres"
@@ -79,6 +90,17 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void seDeconnecterAgent()}
+            aria-label="Déconnexion"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-500"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
         )}
       </header>
 
@@ -136,11 +158,15 @@ export default function DashboardPage() {
                   </span>
                   <span className="truncate text-sm font-medium text-gray-800">
                     {p.nom}
-                    {p.id === pressing.id && (
-                      <span className="ml-2 rounded-full bg-pressci-light px-1.5 py-0.5 text-[10px] font-bold text-pressci-primary">
-                        ACTIF
-                      </span>
-                    )}
+                    <span
+                      className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                        p.ouvert ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {p.ouvert
+                        ? `OUVERT${p.ouvert_depuis ? ` · ${formatHeure(p.ouvert_depuis)}` : ''}`
+                        : `FERMÉ${p.ferme_a ? ` · ${formatHeure(p.ferme_a)}` : ''}`}
+                    </span>
                   </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-sm">

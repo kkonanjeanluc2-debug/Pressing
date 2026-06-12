@@ -54,9 +54,14 @@ const PERIODES: Array<{ id: Periode; label: string }> = [
 ]
 
 export default function StatsPage() {
-  const { pressing } = usePressing()
+  const { pressings } = usePressing()
   const { peut, chargement: chargementProfil } = useProfil()
   const [periode, setPeriode] = useState<Periode>('semaine')
+  const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
+
+  const idsTous = pressings.map((p) => p.id)
+  const idsSelection =
+    pressingFiltre === 'tous' ? idsTous : idsTous.filter((id) => id === pressingFiltre)
   const [dateDebut, setDateDebut] = useState(toInputDate(new Date(Date.now() - 30 * 86400_000)))
   const [dateFin, setDateFin] = useState(toInputDate(new Date()))
 
@@ -84,37 +89,36 @@ export default function StatsPage() {
   }, [periode, dateDebut, dateFin])
 
   const { donnees, chargement, erreur } = useDonneesCachees<DonneesStats>(
-    pressing
-      ? `stats_${pressing.id}_${periode}_${toInputDate(bornes.debut)}_${toInputDate(bornes.fin)}`
+    idsSelection.length > 0
+      ? `stats_${idsSelection.join('_')}_${periode}_${toInputDate(bornes.debut)}_${toInputDate(bornes.fin)}`
       : null,
     async () => {
       const supabase = createClient()
-      const pressingId = (pressing as NonNullable<typeof pressing>).id
 
       const [enc, articles, ticketsClients, clientsTous] = await Promise.all([
         supabase
           .from('encaissements')
           .select('montant, created_at')
-          .eq('pressing_id', pressingId)
+          .in('pressing_id', idsSelection)
           .gte('created_at', bornes.debut.toISOString())
           .lte('created_at', bornes.fin.toISOString()),
         supabase
           .from('articles_ticket')
           .select('type_article, quantite, ticket:tickets!inner(pressing_id, date_depot)')
-          .eq('ticket.pressing_id', pressingId)
+          .in('ticket.pressing_id', idsSelection)
           .gte('ticket.date_depot', bornes.debut.toISOString())
           .lte('ticket.date_depot', bornes.fin.toISOString()),
         supabase
           .from('tickets')
           .select('client:clients(id, nom)')
-          .eq('pressing_id', pressingId)
+          .in('pressing_id', idsSelection)
           .neq('statut', 'annule')
           .gte('date_depot', bornes.debut.toISOString())
           .lte('date_depot', bornes.fin.toISOString()),
         supabase
           .from('clients')
           .select('nombre_depots')
-          .eq('pressing_id', pressingId),
+          .in('pressing_id', idsSelection),
       ])
 
       if (enc.error || articles.error || ticketsClients.error || clientsTous.error) {
@@ -217,6 +221,24 @@ export default function StatsPage() {
           Caisse du jour →
         </Link>
       </header>
+
+      {/* Filtre par pressing (propriétaire multi-pressings) */}
+      {pressings.length > 1 && (
+        <select
+          value={pressingFiltre}
+          onChange={(e) => setPressingFiltre(e.target.value)}
+          aria-label="Filtrer par pressing"
+          className="w-full rounded-card border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-pressci-primary lg:max-w-xs"
+        >
+          <option value="tous">Tous les pressings</option>
+          {pressings.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nom}
+              {p.commune ? ` — ${p.commune}` : ''}
+            </option>
+          ))}
+        </select>
+      )}
 
       {/* Sélecteur de période */}
       <div className="no-scrollbar flex gap-2 overflow-x-auto">

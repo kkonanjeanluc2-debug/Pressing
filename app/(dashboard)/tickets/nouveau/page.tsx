@@ -4,9 +4,14 @@ import TicketForm from '@/components/tickets/TicketForm'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function NouveauTicketPage() {
-  const { pressing, chargement } = usePressing()
+function NouveauTicket() {
+  const searchParams = useSearchParams()
+  const pressingInitial = searchParams.get('pressing')
+
+  const { pressings, chargement } = usePressing()
   const { peut, chargement: chargementProfil } = useProfil()
 
   if (!chargementProfil && !peut('creer_tickets')) {
@@ -29,7 +34,7 @@ export default function NouveauTicketPage() {
     )
   }
 
-  if (!pressing) {
+  if (pressings.length === 0) {
     return <p className="px-4 py-10 text-center text-gray-600">Aucun pressing trouvé.</p>
   }
 
@@ -46,7 +51,21 @@ export default function NouveauTicketPage() {
         <h1 className="text-xl font-bold text-pressci-dark">Nouveau dépôt</h1>
       </header>
 
-      <TicketForm pressingId={pressing.id} />
+      <TicketForm pressings={pressings} pressingInitial={pressingInitial} />
     </div>
+  )
+}
+
+export default function NouveauTicketPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-[70vh] items-center justify-center">
+          <span className="spinner spinner-dark h-8 w-8" />
+        </div>
+      }
+    >
+      <NouveauTicket />
+    </Suspense>
   )
 }

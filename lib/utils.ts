@@ -29,6 +29,12 @@ export function formatDateHeure(date: string | Date): string {
   return `${formatDate(d)} à ${heure}`
 }
 
+/** Heure courte : "08h12" */
+export function formatHeure(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+}
+
 /** Date au format input HTML (yyyy-MM-dd) */
 export function toInputDate(date: Date): string {
   const y = date.getFullYear()

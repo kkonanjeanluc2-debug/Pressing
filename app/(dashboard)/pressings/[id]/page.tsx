@@ -3,16 +3,16 @@
 import GestionAgents from '@/components/pressings/GestionAgents'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
-import { changerPressingActif, usePressing } from '@/hooks/usePressing'
+import { usePressing } from '@/hooks/usePressing'
 import { usePressingsResume } from '@/hooks/usePressingsResume'
 import { useProfil } from '@/hooks/useProfil'
-import { formatFCFA } from '@/lib/utils'
+import { formatFCFA, formatHeure } from '@/lib/utils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 export default function PressingDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const { pressing: pressingActif, pressings, chargement } = usePressing()
+  const { pressings, chargement } = usePressing()
   const { role } = useProfil()
   const { resumes, chargement: chargementResumes } = usePressingsResume(pressings)
 
@@ -37,12 +37,6 @@ export default function PressingDetailPage({ params }: { params: { id: string } 
   }
 
   const resume = resumes.find((r) => r.pressing.id === pressing.id)
-  const estActif = pressingActif?.id === pressing.id
-
-  function travaillerDedans() {
-    changerPressingActif(pressing!.id)
-    router.push('/tickets')
-  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-4 pt-5">
@@ -60,12 +54,34 @@ export default function PressingDetailPage({ params }: { params: { id: string } 
             {[pressing.commune, pressing.telephone].filter(Boolean).join(' · ') || 'Pressing'}
           </p>
         </div>
-        {estActif && (
-          <span className="shrink-0 rounded-full bg-pressci-primary px-2.5 py-1 text-[10px] font-bold text-white">
-            ACTIF
-          </span>
-        )}
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
+            pressing.ouvert ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          {pressing.ouvert ? '🟢 OUVERT' : 'FERMÉ'}
+        </span>
       </header>
+
+      {/* Statut d'ouverture détaillé */}
+      <Card
+        className={`text-sm ${pressing.ouvert ? 'border-green-200 bg-green-50' : 'bg-gray-50'}`}
+      >
+        {pressing.ouvert ? (
+          <p className="font-medium text-green-800">
+            Ouvert depuis {pressing.ouvert_depuis ? formatHeure(pressing.ouvert_depuis) : '—'}
+            {pressing.ouvert_par ? ` par ${pressing.ouvert_par}` : ''}
+          </p>
+        ) : (
+          <p className="font-medium text-gray-600">
+            Fermé{pressing.ferme_a ? ` — dernière fermeture à ${formatHeure(pressing.ferme_a)}` : ''}
+          </p>
+        )}
+        <p className="mt-0.5 text-xs text-gray-500">
+          Le pressing s’ouvre automatiquement quand un agent se connecte, et se ferme à sa
+          déconnexion.
+        </p>
+      </Card>
 
       {/* Chiffres du jour */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -95,10 +111,9 @@ export default function PressingDetailPage({ params }: { params: { id: string } 
         </Card>
       </div>
 
-      {/* Travailler dans ce pressing : il devient le pressing actif
-          et toutes les pages (Tickets, Clients, Caisse…) basculent dessus */}
-      <Button pleineLargeur onClick={travaillerDedans}>
-        {estActif ? 'Ouvrir les tickets de ce pressing' : '→ Travailler dans ce pressing'}
+      {/* Travailler dans ce pressing : ouvre ses tickets filtrés */}
+      <Button pleineLargeur onClick={() => router.push(`/tickets?pressing=${pressing.id}`)}>
+        → Travailler dans ce pressing
       </Button>
 
       {/* Coordonnées */}
@@ -109,7 +124,6 @@ export default function PressingDetailPage({ params }: { params: { id: string } 
         {role === 'proprietaire' && (
           <Link
             href="/parametres"
-            onClick={() => changerPressingActif(pressing.id)}
             className="inline-block pt-1 text-sm font-semibold text-pressci-primary"
           >
             Modifier les informations →

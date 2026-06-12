@@ -14,14 +14,12 @@ import { useEffect, useState } from 'react'
 
 export default function ParametresPage() {
   const router = useRouter()
-  const {
-    pressing,
-    pressings,
-    chargement: chargementPressing,
-    changerPressing,
-    recharger,
-  } = usePressing()
+  const { pressings, chargement: chargementPressing, recharger } = usePressing()
   const supabase = createClient()
+
+  // Pressing en cours d'édition (le premier par défaut)
+  const [pressingEditeId, setPressingEditeId] = useState<string | null>(null)
+  const pressing = pressings.find((p) => p.id === pressingEditeId) ?? pressings[0] ?? null
 
   // Infos pressing
   const [nom, setNom] = useState('')
@@ -207,39 +205,50 @@ export default function ParametresPage() {
           </Link>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          {pressings.map((p) => {
-            const actif = p.id === pressing.id
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => changerPressing(p.id)}
-                className={`flex items-center justify-between rounded-card border p-3 text-left ${
-                  actif ? 'border-pressci-primary bg-pressci-light' : 'border-gray-200 bg-white'
+          {pressings.map((p) => (
+            <Link
+              key={p.id}
+              href={`/pressings/${p.id}`}
+              className="flex items-center justify-between rounded-card border border-gray-200 bg-white p-3 text-left active:bg-gray-50"
+            >
+              <span>
+                <span className="block font-semibold text-gray-800">{p.nom}</span>
+                <span className="block text-xs text-gray-500">{p.commune ?? '—'}</span>
+              </span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  p.ouvert ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                 }`}
               >
-                <span>
-                  <span className="block font-semibold text-gray-800">{p.nom}</span>
-                  <span className="block text-xs text-gray-500">{p.commune ?? '—'}</span>
-                </span>
-                {actif && (
-                  <span className="rounded-full bg-pressci-primary px-2 py-0.5 text-[10px] font-bold text-white">
-                    ACTIF
-                  </span>
-                )}
-              </button>
-            )
-          })}
+                {p.ouvert ? 'OUVERT' : 'FERMÉ'}
+              </span>
+            </Link>
+          ))}
         </div>
-        <p className="text-xs text-gray-400">
-          Les pages Tickets, Clients, Caisse et Stats affichent le pressing actif.
-        </p>
       </Card>
 
       <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
       {/* ---- Informations du pressing ---- */}
       <Card className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-700">Pressing actif : {pressing.nom}</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="shrink-0 text-sm font-semibold text-gray-700">Modifier :</h2>
+          {pressings.length > 1 ? (
+            <select
+              value={pressing.id}
+              onChange={(e) => setPressingEditeId(e.target.value)}
+              aria-label="Choisir le pressing à modifier"
+              className="min-w-0 flex-1 rounded-card border border-gray-300 bg-white px-2 py-1.5 text-sm font-semibold outline-none focus:border-pressci-primary"
+            >
+              {pressings.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nom}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-sm font-semibold text-pressci-dark">{pressing.nom}</span>
+          )}
+        </div>
         <Input label="Nom" value={nom} onChange={(e) => setNom(e.target.value)} />
         <Input
           label="Téléphone"

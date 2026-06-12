@@ -18,12 +18,23 @@ const FILTRES: Array<{ id: FiltreTickets; label: string }> = [
 function ListeTickets() {
   const searchParams = useSearchParams()
   const filtreInitial = (searchParams.get('filtre') as FiltreTickets | null) ?? 'tous'
+  const pressingInitial = searchParams.get('pressing') ?? 'tous'
 
-  const { pressing } = usePressing()
+  const { pressings } = usePressing()
   const { peut } = useProfil()
   const [filtre, setFiltre] = useState<FiltreTickets>(filtreInitial)
+  const [pressingFiltre, setPressingFiltre] = useState<string>(pressingInitial)
   const [recherche, setRecherche] = useState('')
-  const { tickets, chargement, erreur, recharger } = useTickets(pressing?.id ?? null, filtre)
+
+  const idsTous = pressings.map((p) => p.id)
+  const idsSelection =
+    pressingFiltre === 'tous' ? idsTous : idsTous.filter((id) => id === pressingFiltre)
+  const { tickets, chargement, erreur, recharger } = useTickets(
+    idsSelection.length > 0 ? idsSelection : null,
+    filtre
+  )
+
+  const pressingSelectionne = pressings.find((p) => p.id === pressingFiltre)
 
   // Pull-to-refresh simple (glisser vers le bas en haut de page)
   const toucheDebutY = useRef(0)
@@ -59,16 +70,43 @@ function ListeTickets() {
       onTouchEnd={(e) => void surToucheFin(e)}
     >
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-pressci-dark">Tickets</h1>
+        <div>
+          <h1 className="text-xl font-bold text-pressci-dark">Tickets</h1>
+          {pressingSelectionne && (
+            <p className="text-sm text-gray-500">{pressingSelectionne.nom}</p>
+          )}
+        </div>
         {peut('creer_tickets') && (
           <Link
-            href="/tickets/nouveau"
+            href={
+              pressingFiltre !== 'tous'
+                ? `/tickets/nouveau?pressing=${pressingFiltre}`
+                : '/tickets/nouveau'
+            }
             className="rounded-full bg-pressci-primary px-4 py-2 text-sm font-semibold text-white"
           >
             + Nouveau
           </Link>
         )}
       </header>
+
+      {/* Filtre par pressing (propriétaire multi-pressings) */}
+      {pressings.length > 1 && (
+        <select
+          value={pressingFiltre}
+          onChange={(e) => setPressingFiltre(e.target.value)}
+          aria-label="Filtrer par pressing"
+          className="w-full rounded-card border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-pressci-primary lg:max-w-xs"
+        >
+          <option value="tous">Tous les pressings</option>
+          {pressings.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nom}
+              {p.commune ? ` — ${p.commune}` : ''}
+            </option>
+          ))}
+        </select>
+      )}
 
       {rafraichissement && (
         <div className="flex justify-center">

@@ -12,9 +12,10 @@ import { useTickets } from '@/hooks/useTickets'
  * fraîcheur du cache, aucune requête n'est faite en double.
  */
 export default function PrechargeurDonnees() {
-  const { pressing, pressings } = usePressing()
-  useTickets(pressing?.id ?? null, 'tous')
-  useClients(pressing?.id ?? null)
+  const { pressings } = usePressing()
+  const ids = pressings.map((p) => p.id)
+  useTickets(ids.length > 0 ? ids : null, 'tous')
+  useClients(ids.length > 0 ? ids : null)
   usePressingsResume(pressings)
   return null
 }

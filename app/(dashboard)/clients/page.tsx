@@ -7,8 +7,9 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 export default function ClientsPage() {
-  const { pressing } = usePressing()
-  const { clients, chargement, erreur } = useClients(pressing?.id ?? null)
+  const { pressings } = usePressing()
+  const ids = pressings.map((p) => p.id)
+  const { clients, chargement, erreur } = useClients(ids.length > 0 ? ids : null)
   const [recherche, setRecherche] = useState('')
 
   const rechercheNorm = recherche.trim().toLowerCase()

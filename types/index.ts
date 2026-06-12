@@ -12,6 +12,10 @@ export interface Pressing {
   commune: string | null
   logo_url: string | null
   ticket_counter: number
+  ouvert: boolean
+  ouvert_depuis: string | null
+  ferme_a: string | null
+  ouvert_par: string | null
   created_at: string
 }
 

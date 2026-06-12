@@ -2,11 +2,11 @@
 
 import { usePressing } from '@/hooks/usePressing'
 import { usePressingsResume } from '@/hooks/usePressingsResume'
-import { formatFCFA } from '@/lib/utils'
+import { formatFCFA, formatHeure } from '@/lib/utils'
 import Link from 'next/link'
 
 export default function PressingsPage() {
-  const { pressing: pressingActif, pressings, chargement } = usePressing()
+  const { pressings, chargement } = usePressing()
   const { resumes, chargement: chargementResumes } = usePressingsResume(pressings)
 
   if (chargement) {
@@ -53,14 +53,11 @@ export default function PressingsPage() {
                 tickets_actifs: 0,
               }))
           ).map(({ pressing, ca_jour, depots_jour, creances, tickets_actifs }) => {
-            const actif = pressing.id === pressingActif?.id
             return (
               <Link
                 key={pressing.id}
                 href={`/pressings/${pressing.id}`}
-                className={`block rounded-card border bg-white p-4 transition-shadow hover:shadow-md ${
-                  actif ? 'border-pressci-primary ring-1 ring-pressci-primary' : 'border-gray-200'
-                }`}
+                className="block rounded-card border border-gray-200 bg-white p-4 transition-shadow hover:shadow-md"
               >
                 {/* Nom + badge */}
                 <div className="mb-3 flex items-start justify-between gap-2">
@@ -78,11 +75,17 @@ export default function PressingsPage() {
                       </p>
                     </div>
                   </div>
-                  {actif && (
-                    <span className="rounded-full bg-pressci-primary px-2 py-0.5 text-[10px] font-bold text-white">
-                      ACTIF
-                    </span>
-                  )}
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      pressing.ouvert
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {pressing.ouvert
+                      ? `🟢 OUVERT${pressing.ouvert_depuis ? ` · ${formatHeure(pressing.ouvert_depuis)}` : ''}`
+                      : `FERMÉ${pressing.ferme_a ? ` · ${formatHeure(pressing.ferme_a)}` : ''}`}
+                  </span>
                 </div>
 
                 {/* Coordonnées */}

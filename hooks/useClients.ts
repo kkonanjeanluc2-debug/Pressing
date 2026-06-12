@@ -11,16 +11,21 @@ interface UseClientsResult {
   recharger: () => Promise<void>
 }
 
-/** Liste alphabétique des clients du pressing (affichage instantané via cache). */
-export function useClients(pressingId: string | null): UseClientsResult {
+/**
+ * Liste alphabétique des clients (affichage instantané via cache).
+ * Accepte un pressing ou plusieurs (vue globale du propriétaire).
+ */
+export function useClients(pressingIds: string | string[] | null): UseClientsResult {
+  const ids = pressingIds === null ? [] : Array.isArray(pressingIds) ? pressingIds : [pressingIds]
+
   const { donnees, chargement, erreur, recharger } = useDonneesCachees<Client[]>(
-    pressingId ? `clients_${pressingId}` : null,
+    ids.length > 0 ? `clients_${ids.join('_')}` : null,
     async () => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .eq('pressing_id', pressingId as string)
+        .in('pressing_id', ids)
         .order('nom', { ascending: true })
       if (error) throw error
       return (data ?? []) as Client[]

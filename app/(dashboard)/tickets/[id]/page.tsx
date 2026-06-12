@@ -11,8 +11,10 @@ function DetailTicket({ ticketId }: { ticketId: string }) {
   const searchParams = useSearchParams()
   const estNouveau = searchParams.get('nouveau') === '1'
 
-  const { pressing } = usePressing()
+  const { pressings } = usePressing()
   const { ticket, chargement, erreur, recharger } = useTicket(ticketId)
+  // Le pressing du ticket (et non le premier de la liste)
+  const pressing = pressings.find((p) => p.id === ticket?.pressing_id) ?? pressings[0] ?? null
 
   if (chargement || !pressing) {
     return (

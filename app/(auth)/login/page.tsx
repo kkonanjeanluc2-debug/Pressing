@@ -25,7 +25,7 @@ export default function LoginPage() {
     // Les agents se connectent avec leur numéro de téléphone :
     // on le convertit en email synthétique pour Supabase Auth.
     const identifiant = validerTelephone(email) ? emailAgent(email) : email
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: identifiant,
       password: motDePasse,
     })
@@ -42,6 +42,21 @@ export default function LoginPage() {
 
     // Vider le cache d'une éventuelle session précédente
     viderCache()
+
+    // Si c'est un agent : son pressing passe « ouvert » avec l'heure d'ouverture
+    if (data.user) {
+      const { data: agentRow } = await supabase
+        .from('agents')
+        .select('pressing_id')
+        .eq('user_id', data.user.id)
+        .maybeSingle()
+      if (agentRow) {
+        await supabase.rpc('ouvrir_pressing', {
+          p_pressing_id: agentRow.pressing_id as string,
+        })
+      }
+    }
+
     router.push('/')
     router.refresh()
   }

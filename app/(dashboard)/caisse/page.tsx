@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatDate, formatFCFA, MODE_PAIEMENT_LABELS, toInputDate } from '@/lib/utils'
 import type { ModePaiement } from '@/types'
 import Link from 'next/link'
+import { useState } from 'react'
 
 interface EncaissementAvecTicket {
   id: string
@@ -32,24 +33,31 @@ function debutJour(decalageJours = 0): Date {
 }
 
 export default function CaissePage() {
-  const { pressing } = usePressing()
+  const { pressings } = usePressing()
   const { peut, chargement: chargementProfil } = useProfil()
+  const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
+
+  const idsTous = pressings.map((p) => p.id)
+  const idsSelection =
+    pressingFiltre === 'tous' ? idsTous : idsTous.filter((id) => id === pressingFiltre)
 
   const { donnees, chargement, erreur } = useDonneesCachees<DonneesCaisse>(
-    pressing ? `caisse_${pressing.id}_${toInputDate(new Date())}` : null,
+    idsSelection.length > 0
+      ? `caisse_${idsSelection.join('_')}_${toInputDate(new Date())}`
+      : null,
     async () => {
       const supabase = createClient()
       const [jour, semaine] = await Promise.all([
         supabase
           .from('encaissements')
           .select('*, ticket:tickets(numero, client:clients(nom))')
-          .eq('pressing_id', (pressing as NonNullable<typeof pressing>).id)
+          .in('pressing_id', idsSelection)
           .gte('created_at', debutJour().toISOString())
           .order('created_at', { ascending: false }),
         supabase
           .from('encaissements')
           .select('montant, created_at')
-          .eq('pressing_id', (pressing as NonNullable<typeof pressing>).id)
+          .in('pressing_id', idsSelection)
           .gte('created_at', debutJour(-7).toISOString())
           .lt('created_at', debutJour().toISOString()),
       ])
@@ -103,6 +111,24 @@ export default function CaissePage() {
           <p className="text-sm text-gray-500">{formatDate(new Date())}</p>
         </div>
       </header>
+
+      {/* Filtre par pressing (propriétaire multi-pressings) */}
+      {pressings.length > 1 && (
+        <select
+          value={pressingFiltre}
+          onChange={(e) => setPressingFiltre(e.target.value)}
+          aria-label="Filtrer par pressing"
+          className="w-full rounded-card border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-pressci-primary print:hidden lg:max-w-xs"
+        >
+          <option value="tous">Tous les pressings</option>
+          {pressings.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nom}
+              {p.commune ? ` — ${p.commune}` : ''}
+            </option>
+          ))}
+        </select>
+      )}
 
       {erreur && (
         <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>

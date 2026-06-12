@@ -1,6 +1,5 @@
 'use client'
 
-import PressingSwitcher from '@/components/ui/PressingSwitcher'
 import { useProfil } from '@/hooks/useProfil'
 import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
@@ -130,6 +129,10 @@ export default function SideNav() {
 
   async function seDeconnecter() {
     const supabase = createClient()
+    // Un agent qui se déconnecte ferme son pressing (heure de fermeture)
+    if (role === 'agent' && agent) {
+      await supabase.rpc('fermer_pressing', { p_pressing_id: agent.pressing_id })
+    }
     await supabase.auth.signOut()
     viderCache()
     router.push('/login')
@@ -155,16 +158,6 @@ export default function SideNav() {
           </div>
         )}
       </div>
-
-      {/* Pressing actif */}
-      {!reduite && (
-        <div className="border-b border-white/10 px-4 py-3">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-pressci-light/50">
-            Pressing actif
-          </p>
-          <PressingSwitcher variante="sombre" className="w-full text-sm" />
-        </div>
-      )}
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">

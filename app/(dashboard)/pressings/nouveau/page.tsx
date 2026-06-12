@@ -1,7 +1,6 @@
 'use client'
 
 import CreerPressing from '@/components/onboarding/CreerPressing'
-import { changerPressingActif } from '@/hooks/usePressing'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -12,7 +11,7 @@ export default function NouveauPressingPage() {
     <div className="px-4 pt-5">
       <header className="mb-2 flex items-center gap-3">
         <Link
-          href="/parametres"
+          href="/pressings"
           aria-label="Retour"
           className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-gray-600 shadow-sm"
         >
@@ -24,9 +23,8 @@ export default function NouveauPressingPage() {
       <CreerPressing
         titre="Ajouter un pressing"
         sousTitre="Un nouveau point de vente pour votre réseau"
-        surCreation={(pressingId) => {
-          changerPressingActif(pressingId)
-          router.push('/')
+        surCreation={() => {
+          router.push('/pressings')
           router.refresh()
         }}
       />
