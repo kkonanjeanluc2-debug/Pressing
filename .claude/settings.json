@@ -13,7 +13,11 @@
       "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" init -b main)",
       "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" check-ignore .env.local)",
       "PowerShell(if \\($?\\) { \".env.local bien ignor�\" } else { \"ATTENTION: .env.local PAS ignor�\" })",
-      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" add -A; git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" status --short | Select-Object -First 10; \"...\"; \\(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" status --short | Measure-Object -Line\\).Lines.ToString\\(\\) + \" fichiers\")"
+      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" add -A; git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" status --short | Select-Object -First 10; \"...\"; \\(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" status --short | Measure-Object -Line\\).Lines.ToString\\(\\) + \" fichiers\")",
+      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" rm -r --cached supabase/.temp --quiet)",
+      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" add .gitignore)",
+      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" remote add origin https://github.com/kkonanjeanluc2-debug/Pressing.git)",
+      "PowerShell(git -C \"c:\\\\Users\\\\konan\\\\Pressing-ivoire\" push -u origin main)"
     ]
   }
 }

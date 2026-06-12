@@ -124,30 +124,30 @@ export default function SideNav() {
   return (
     <aside
       className={cn(
-        'sticky top-0 hidden h-screen shrink-0 flex-col border-r border-gray-200 bg-white transition-all lg:flex',
+        'sticky top-0 hidden h-screen shrink-0 flex-col bg-pressci-dark text-pressci-light transition-all lg:flex',
         reduite ? 'w-20' : 'w-64'
       )}
     >
       {/* Logo */}
-      <div className={cn('flex items-center gap-3 border-b border-gray-100 py-5', reduite ? 'justify-center px-2' : 'px-5')}>
+      <div className={cn('flex items-center gap-3 border-b border-white/10 py-5', reduite ? 'justify-center px-2' : 'px-5')}>
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pressci-primary text-xl font-bold text-white">
           P
         </div>
         {!reduite && (
           <div>
-            <p className="text-lg font-bold text-pressci-dark">PressCI</p>
-            <p className="text-xs text-gray-400">Gestion de pressing</p>
+            <p className="text-lg font-bold text-white">PressCI</p>
+            <p className="text-xs text-pressci-light/60">Gestion de pressing</p>
           </div>
         )}
       </div>
 
       {/* Pressing actif */}
       {!reduite && (
-        <div className="border-b border-gray-100 px-4 py-3">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+        <div className="border-b border-white/10 px-4 py-3">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-pressci-light/50">
             Pressing actif
           </p>
-          <PressingSwitcher className="w-full text-sm" />
+          <PressingSwitcher variante="sombre" className="w-full text-sm" />
         </div>
       )}
 
@@ -164,12 +164,12 @@ export default function SideNav() {
                 'relative flex items-center gap-3 rounded-card px-3 py-2.5 text-sm font-medium transition-colors',
                 reduite && 'justify-center px-0',
                 actif
-                  ? 'bg-pressci-light text-pressci-primary'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                  ? 'bg-pressci-primary text-white'
+                  : 'text-pressci-light/80 hover:bg-white/10 hover:text-white'
               )}
             >
               {actif && (
-                <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r bg-pressci-primary" />
+                <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r bg-pressci-accent" />
               )}
               {lien.icone}
               {!reduite && lien.label}
@@ -179,15 +179,15 @@ export default function SideNav() {
       </nav>
 
       {/* Profil + actions */}
-      <div className="border-t border-gray-100 px-3 py-4">
+      <div className="border-t border-white/10 px-3 py-4">
         <div className={cn('mb-3 flex items-center gap-3', reduite && 'justify-center')}>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pressci-light text-sm font-bold text-pressci-primary">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pressci-primary text-sm font-bold text-white">
             {(email ?? 'P').charAt(0).toUpperCase()}
           </div>
           {!reduite && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-gray-800">{email ?? '…'}</p>
-              <p className="text-xs text-gray-400">Propriétaire</p>
+              <p className="truncate text-sm font-semibold text-white">{email ?? '…'}</p>
+              <p className="text-xs text-pressci-light/60">Propriétaire</p>
             </div>
           )}
         </div>
@@ -197,7 +197,7 @@ export default function SideNav() {
           onClick={() => void seDeconnecter()}
           title="Déconnexion"
           className={cn(
-            'flex w-full items-center gap-3 rounded-card px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600',
+            'flex w-full items-center gap-3 rounded-card px-3 py-2 text-sm font-medium text-pressci-light/80 transition-colors hover:bg-white/10 hover:text-red-300',
             reduite && 'justify-center px-0'
           )}
         >
@@ -212,7 +212,7 @@ export default function SideNav() {
           onClick={basculerReduction}
           title={reduite ? 'Agrandir' : 'Réduire'}
           className={cn(
-            'mt-1 flex w-full items-center gap-3 rounded-card px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700',
+            'mt-1 flex w-full items-center gap-3 rounded-card px-3 py-2 text-sm font-medium text-pressci-light/60 transition-colors hover:bg-white/10 hover:text-white',
             reduite && 'justify-center px-0'
           )}
         >
