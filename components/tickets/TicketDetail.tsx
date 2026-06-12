@@ -4,6 +4,7 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import { useProfil } from '@/hooks/useProfil'
+import { useProfilProprietaire } from '@/hooks/useProfilProprietaire'
 import { changerStatutTicket } from '@/hooks/useTickets'
 import { createClient } from '@/lib/supabase/client'
 import { genererTicketPdf } from '@/lib/ticketPdf'
@@ -37,6 +38,7 @@ const MODES_ENCAISSEMENT: ModePaiement[] = [
 
 export default function TicketDetail({ ticket, pressing, recharger, nouveauticket }: TicketDetailProps) {
   const { peut } = useProfil()
+  const { proprietaire } = useProfilProprietaire(pressing.owner_id)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -65,7 +67,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
 
   /** Télécharge le ticket en PDF A4. */
   function telechargerPdf() {
-    const doc = genererTicketPdf(ticket, pressing)
+    const doc = genererTicketPdf(ticket, pressing, proprietaire)
     doc.save(`ticket-${ticket.numero.replace('#', '')}.pdf`)
   }
 
@@ -82,7 +84,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
     setInfo(null)
     setEnvoiWhatsApp(true)
 
-    const doc = genererTicketPdf(ticket, pressing)
+    const doc = genererTicketPdf(ticket, pressing, proprietaire)
     const nomFichier = `ticket-${ticket.numero.replace('#', '')}.pdf`
     const fichier = new File([doc.output('blob')], nomFichier, { type: 'application/pdf' })
 
@@ -553,6 +555,17 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
           <p className="text-sm font-bold uppercase">{pressing.nom}</p>
           <p>{[pressing.adresse, pressing.commune].filter(Boolean).join(', ')}</p>
           {pressing.telephone && <p>Tél : {pressing.telephone}</p>}
+          {proprietaire && (
+            <p className="text-[9px]">
+              {[
+                proprietaire.nom,
+                proprietaire.rccm ? `RCCM ${proprietaire.rccm}` : null,
+                proprietaire.ncc ? `NCC ${proprietaire.ncc}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          )}
         </div>
         <p className="my-1 border-t border-dashed border-gray-500" />
         <div className="flex justify-between font-bold">

@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
+import { useProfilProprietaire } from '@/hooks/useProfilProprietaire'
 import { createClient } from '@/lib/supabase/client'
 import {
   formatDate,
@@ -61,6 +62,7 @@ function LigneEncaissement({ e }: { e: EncaissementAvecTicket }) {
 export default function CaissePage() {
   const { pressings } = usePressing()
   const { role, agent, peut, chargement: chargementProfil } = useProfil()
+  const { proprietaire } = useProfilProprietaire(pressings[0]?.owner_id ?? null)
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
 
   const idsTous = pressings.map((p) => p.id)
@@ -155,29 +157,41 @@ export default function CaissePage() {
                 PressCI — Gestion de pressing
               </span>
             </div>
+            {/* Identité du propriétaire (entreprise ou personne physique) */}
+            <h1 className="text-2xl font-bold text-white">
+              {proprietaire?.nom ??
+                (pressingSelectionne
+                  ? pressingSelectionne.nom
+                  : `Tous les pressings (${pressings.length})`)}
+            </h1>
+            {proprietaire?.type_compte === 'entreprise' && (proprietaire.rccm || proprietaire.ncc) && (
+              <p className="text-xs text-pressci-light/80">
+                {[
+                  proprietaire.rccm ? `RCCM : ${proprietaire.rccm}` : null,
+                  proprietaire.ncc ? `NCC : ${proprietaire.ncc}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            )}
+            {proprietaire?.telephone && (
+              <p className="text-xs text-pressci-light/80">Tél : {proprietaire.telephone}</p>
+            )}
             {pressingSelectionne ? (
-              <>
-                <h1 className="text-2xl font-bold text-white">{pressingSelectionne.nom}</h1>
-                <p className="text-sm text-pressci-light/90">
-                  {[pressingSelectionne.adresse, pressingSelectionne.commune]
-                    .filter(Boolean)
-                    .join(', ') || ''}
-                </p>
-                {pressingSelectionne.telephone && (
-                  <p className="text-sm text-pressci-light/90">
-                    Tél : {pressingSelectionne.telephone}
-                  </p>
-                )}
-              </>
+              <p className="mt-1 text-sm font-semibold text-pressci-light">
+                Pressing : {pressingSelectionne.nom}
+                {[pressingSelectionne.adresse, pressingSelectionne.commune]
+                  .filter(Boolean)
+                  .join(', ')
+                  ? ` — ${[pressingSelectionne.adresse, pressingSelectionne.commune].filter(Boolean).join(', ')}`
+                  : ''}
+                {pressingSelectionne.telephone ? ` — ${pressingSelectionne.telephone}` : ''}
+              </p>
             ) : (
-              <>
-                <h1 className="text-2xl font-bold text-white">
-                  Tous les pressings ({pressings.length})
-                </h1>
-                <p className="text-sm text-pressci-light/90">
-                  {pressings.map((p) => p.nom).join(' · ')}
-                </p>
-              </>
+              <p className="mt-1 text-sm text-pressci-light/90">
+                {proprietaire ? `Pressings (${pressings.length}) : ` : ''}
+                {pressings.map((p) => p.nom).join(' · ')}
+              </p>
             )}
           </div>
           <div className="text-right">

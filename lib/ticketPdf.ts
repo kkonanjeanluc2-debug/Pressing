@@ -6,7 +6,7 @@ import {
   MODE_PAIEMENT_LABELS,
   STATUT_LABELS,
 } from '@/lib/utils'
-import type { Pressing, Ticket } from '@/types'
+import type { Pressing, ProfilProprietaire, Ticket } from '@/types'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -18,13 +18,20 @@ const VERT_PALE: [number, number, number] = [225, 245, 238]
 /**
  * Génère le ticket de dépôt en PDF A4 aux couleurs PressCI
  * (téléchargement direct et envoi WhatsApp).
+ * Les informations du propriétaire (raison sociale, RCCM, NCC)
+ * apparaissent dans l'en-tête quand le profil est renseigné.
  */
-export function genererTicketPdf(ticket: Ticket, pressing: Pressing): jsPDF {
+export function genererTicketPdf(
+  ticket: Ticket,
+  pressing: Pressing,
+  proprietaire?: ProfilProprietaire | null
+): jsPDF {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const hauteurEntete = proprietaire ? 50 : 44
 
   // ---- En-tête vert foncé ----
   doc.setFillColor(...VERT_FONCE)
-  doc.rect(0, 0, 210, 44, 'F')
+  doc.rect(0, 0, 210, hauteurEntete, 'F')
 
   doc.setFillColor(...VERT_CLAIR)
   doc.roundedRect(12, 8, 12, 12, 2, 2, 'F')
@@ -50,6 +57,20 @@ export function genererTicketPdf(ticket: Ticket, pressing: Pressing): jsPDF {
   if (adresse) doc.text(adresse, 12, 35.5)
   if (pressing.telephone) doc.text(`Tél : ${pressing.telephone}`, 12, 40)
 
+  // Identité légale du propriétaire (entreprise ou personne physique)
+  if (proprietaire) {
+    doc.setTextColor(...VERT_CLAIR)
+    doc.setFontSize(8.5)
+    const mentions = [
+      proprietaire.nom,
+      proprietaire.rccm ? `RCCM : ${proprietaire.rccm}` : null,
+      proprietaire.ncc ? `NCC : ${proprietaire.ncc}` : null,
+    ]
+      .filter(Boolean)
+      .join('  ·  ')
+    doc.text(mentions, 12, 46)
+  }
+
   doc.setTextColor(...VERT_CLAIR)
   doc.setFontSize(11)
   doc.setFont('helvetica', 'bold')
@@ -65,10 +86,10 @@ export function genererTicketPdf(ticket: Ticket, pressing: Pressing): jsPDF {
 
   // Bande d'accent
   doc.setFillColor(...VERT_CLAIR)
-  doc.rect(0, 45, 210, 2, 'F')
+  doc.rect(0, hauteurEntete + 1, 210, 2, 'F')
 
   // ---- Client et dates ----
-  let y = 58
+  let y = hauteurEntete + 14
   doc.setTextColor(150)
   doc.setFontSize(8)
   doc.setFont('helvetica', 'bold')

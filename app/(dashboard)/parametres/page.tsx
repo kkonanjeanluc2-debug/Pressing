@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -9,16 +9,15 @@ import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
 import { appliquerTheme, lireTheme, type Theme } from '@/lib/theme'
 import { formatFCFA } from '@/lib/utils'
-import { COMMUNES_ABIDJAN, PLANS, type Abonnement, type Plan } from '@/types'
+import { PLANS, type Abonnement, type Plan } from '@/types'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-type Section = 'profil' | 'pressings' | 'apparence' | 'securite' | 'abonnement'
+type Section = 'profil' | 'apparence' | 'securite' | 'abonnement'
 
 const SECTIONS: Array<{ id: Section; label: string; icone: string }> = [
   { id: 'profil', label: 'Profil', icone: '👤' },
-  { id: 'pressings', label: 'Pressings', icone: '🏪' },
   { id: 'apparence', label: 'Apparence', icone: '🎨' },
   { id: 'securite', label: 'Sécurité', icone: '🔒' },
   { id: 'abonnement', label: 'Abonnement', icone: '💳' },
@@ -42,18 +41,17 @@ export default function ParametresPage() {
 
   // ---- Profil ----
   const [email, setEmail] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
+  const [typeCompte, setTypeCompte] = useState<'personne' | 'entreprise'>('personne')
   const [nomGerant, setNomGerant] = useState('')
+  const [rccm, setRccm] = useState('')
+  const [ncc, setNcc] = useState('')
   const [telGerant, setTelGerant] = useState('')
   const [sauvegardeProfil, setSauvegardeProfil] = useState(false)
 
-  // ---- Pressing en cours d'édition ----
+  // ---- Pressing concerné par l'abonnement ----
   const [pressingEditeId, setPressingEditeId] = useState<string | null>(null)
   const pressing = pressings.find((p) => p.id === pressingEditeId) ?? pressings[0] ?? null
-  const [nom, setNom] = useState('')
-  const [telephone, setTelephone] = useState('')
-  const [adresse, setAdresse] = useState('')
-  const [commune, setCommune] = useState('')
-  const [sauvegarde, setSauvegarde] = useState(false)
 
   // ---- Apparence ----
   const [theme, setTheme] = useState<Theme>('clair')
@@ -76,20 +74,36 @@ export default function ParametresPage() {
       } = await supabase.auth.getUser()
       if (!user) return
       setEmail(user.email ?? '')
+      setUserId(user.id)
+
+      // Profil enregistré (documents) sinon métadonnées de l'inscription
+      const { data: profil } = await supabase
+        .from('profils')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle()
       const meta = (user.user_metadata ?? {}) as Record<string, unknown>
-      if (typeof meta.nom === 'string') setNomGerant(meta.nom)
-      if (typeof meta.telephone === 'string') setTelGerant(meta.telephone)
+
+      if (profil) {
+        setTypeCompte(profil.type_compte === 'entreprise' ? 'entreprise' : 'personne')
+        setNomGerant((profil.nom as string) ?? '')
+        setRccm((profil.rccm as string | null) ?? '')
+        setNcc((profil.ncc as string | null) ?? '')
+        setTelGerant((profil.telephone as string | null) ?? '')
+      } else {
+        if (meta.type_compte === 'entreprise') setTypeCompte('entreprise')
+        if (typeof meta.nom === 'string') setNomGerant(meta.nom)
+        if (typeof meta.rccm === 'string') setRccm(meta.rccm)
+        if (typeof meta.ncc === 'string') setNcc(meta.ncc)
+        if (typeof meta.telephone === 'string') setTelGerant(meta.telephone)
+      }
     }
     void chargerProfil()
   }, [supabase])
 
-  // Champs du pressing édité + abonnement
+  // Abonnement du pressing sélectionné
   useEffect(() => {
     if (!pressing) return
-    setNom(pressing.nom)
-    setTelephone(pressing.telephone ?? '')
-    setAdresse(pressing.adresse ?? '')
-    setCommune(pressing.commune ?? '')
 
     async function chargerAbonnement() {
       if (!pressing) return
@@ -112,37 +126,44 @@ export default function ParametresPage() {
   }
 
   async function sauvegarderProfil() {
+    if (nomGerant.trim().length < 2) {
+      setErreur(
+        typeCompte === 'entreprise' ? 'Entrez la raison sociale.' : 'Entrez votre nom complet.'
+      )
+      return
+    }
     setSauvegardeProfil(true)
     setMessage(null)
     setErreur(null)
-    const { error } = await supabase.auth.updateUser({
-      data: { nom: nomGerant.trim(), telephone: telGerant.trim() },
-    })
-    if (error) setErreur('La sauvegarde du profil a échoué. Réessayez.')
-    else notifier('Profil enregistré ✅')
-    setSauvegardeProfil(false)
-  }
 
-  async function sauvegarderInfos() {
-    if (!pressing) return
-    setSauvegarde(true)
-    setMessage(null)
-    setErreur(null)
-    const { error } = await supabase
-      .from('pressings')
-      .update({
-        nom: nom.trim(),
-        telephone: telephone.trim() || null,
-        adresse: adresse.trim() || null,
-        commune,
-      })
-      .eq('id', pressing.id)
-    if (error) setErreur('La sauvegarde a échoué. Réessayez.')
-    else {
-      notifier('Informations du pressing enregistrées ✅')
-      recharger()
+    const [resProfil, resAuth] = await Promise.all([
+      userId
+        ? supabase.from('profils').upsert({
+            user_id: userId,
+            type_compte: typeCompte,
+            nom: nomGerant.trim(),
+            rccm: rccm.trim() || null,
+            ncc: ncc.trim() || null,
+            telephone: telGerant.trim() || null,
+          })
+        : Promise.resolve({ error: null }),
+      supabase.auth.updateUser({
+        data: {
+          type_compte: typeCompte,
+          nom: nomGerant.trim(),
+          rccm: rccm.trim() || null,
+          ncc: ncc.trim() || null,
+          telephone: telGerant.trim(),
+        },
+      }),
+    ])
+
+    if (resProfil.error || resAuth.error) {
+      setErreur('La sauvegarde du profil a échoué. Réessayez.')
+    } else {
+      notifier('Profil enregistré ✅ — il apparaîtra sur vos documents.')
     }
-    setSauvegarde(false)
+    setSauvegardeProfil(false)
   }
 
   function changerTheme(t: Theme) {
@@ -274,130 +295,92 @@ export default function ParametresPage() {
                   <p className="font-bold text-gray-800">{nomGerant || 'Propriétaire'}</p>
                   <p className="text-sm text-gray-500">{email}</p>
                   <p className="text-xs text-gray-400">
+                    {typeCompte === 'entreprise' ? 'Entreprise' : 'Personne physique'} ·{' '}
                     {pressings.length} pressing{pressings.length > 1 ? 's' : ''} ·{' '}
                     Plan {PLANS.find((p) => p.id === planActuel)?.nom}
                   </p>
                 </div>
               </div>
 
+              {/* Type de compte */}
+              <div>
+                <span className="mb-1 block text-sm font-medium text-gray-700">
+                  Type de compte
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTypeCompte('personne')}
+                    className={`rounded-card border p-3 text-left ${
+                      typeCompte === 'personne'
+                        ? 'border-pressci-primary bg-pressci-light ring-1 ring-pressci-primary'
+                        : 'border-gray-300 bg-white'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-gray-800">👤 Personne physique</p>
+                    <p className="text-xs text-gray-500">Gérant individuel</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTypeCompte('entreprise')}
+                    className={`rounded-card border p-3 text-left ${
+                      typeCompte === 'entreprise'
+                        ? 'border-pressci-primary bg-pressci-light ring-1 ring-pressci-primary'
+                        : 'border-gray-300 bg-white'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-gray-800">🏢 Entreprise</p>
+                    <p className="text-xs text-gray-500">Société immatriculée</p>
+                  </button>
+                </div>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input
-                  label="Nom complet"
-                  placeholder="Ex : Konan Jean-Luc"
+                  label={typeCompte === 'entreprise' ? 'Raison sociale' : 'Nom complet'}
+                  placeholder={
+                    typeCompte === 'entreprise' ? 'Ex : SARL Clean Express' : 'Ex : Konan Jean-Luc'
+                  }
                   value={nomGerant}
                   onChange={(e) => setNomGerant(e.target.value)}
                 />
                 <Input
-                  label="Téléphone personnel"
+                  label="Téléphone"
                   type="tel"
                   placeholder="07 07 07 07 07"
                   value={telGerant}
                   onChange={(e) => setTelGerant(e.target.value)}
                 />
               </div>
+
+              {typeCompte === 'entreprise' && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Input
+                    label="N° RCCM"
+                    placeholder="CI-ABJ-…"
+                    value={rccm}
+                    onChange={(e) => setRccm(e.target.value)}
+                  />
+                  <Input
+                    label="NCC (compte contribuable)"
+                    placeholder="Ex : 1234567A"
+                    value={ncc}
+                    onChange={(e) => setNcc(e.target.value)}
+                  />
+                </div>
+              )}
+
               <Input label="Email (identifiant de connexion)" value={email} disabled />
+
+              <p className="text-xs text-gray-400">
+                Ces informations apparaissent en en-tête de vos documents : rapports de caisse,
+                tickets PDF et états comptables.
+              </p>
 
               <Button pleineLargeur chargement={sauvegardeProfil} onClick={() => void sauvegarderProfil()}>
                 Enregistrer le profil
               </Button>
             </Card>
-          )}
-
-          {/* ============ PRESSINGS ============ */}
-          {section === 'pressings' && (
-            <>
-              <Card className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-gray-700">
-                    Mes pressings ({pressings.length})
-                  </h2>
-                  <Link
-                    href="/pressings/nouveau"
-                    className="rounded-full bg-pressci-primary px-3 py-1.5 text-xs font-semibold text-white"
-                  >
-                    + Ajouter
-                  </Link>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {pressings.map((p) => (
-                    <Link
-                      key={p.id}
-                      href={`/pressings/${p.id}`}
-                      className="flex items-center justify-between rounded-card border border-gray-200 bg-white p-3 active:bg-gray-50"
-                    >
-                      <span>
-                        <span className="block font-semibold text-gray-800">{p.nom}</span>
-                        <span className="block text-xs text-gray-500">{p.commune ?? '—'}</span>
-                      </span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          p.ouvert ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        {p.ouvert ? 'OUVERT' : 'FERMÉ'}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-                <Link
-                  href="/vetements"
-                  className="block text-sm font-semibold text-pressci-primary"
-                >
-                  👕 Gérer les vêtements et tarifs →
-                </Link>
-              </Card>
-
-              <Card className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="shrink-0 text-sm font-semibold text-gray-700">Modifier :</h2>
-                  {pressings.length > 1 ? (
-                    <select
-                      value={pressing.id}
-                      onChange={(e) => setPressingEditeId(e.target.value)}
-                      aria-label="Choisir le pressing à modifier"
-                      className="min-w-0 flex-1 rounded-card border border-gray-300 bg-white px-2 py-1.5 text-sm font-semibold outline-none focus:border-pressci-primary"
-                    >
-                      {pressings.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nom}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="text-sm font-semibold text-pressci-dark">{pressing.nom}</span>
-                  )}
-                </div>
-                <Input label="Nom" value={nom} onChange={(e) => setNom(e.target.value)} />
-                <Input
-                  label="Téléphone"
-                  type="tel"
-                  value={telephone}
-                  onChange={(e) => setTelephone(e.target.value)}
-                />
-                <Input label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
-                <div>
-                  <label htmlFor="commune" className="mb-1 block text-sm font-medium text-gray-700">
-                    Commune
-                  </label>
-                  <select
-                    id="commune"
-                    value={commune}
-                    onChange={(e) => setCommune(e.target.value)}
-                    className="w-full rounded-card border border-gray-300 bg-white px-3 py-3 outline-none focus:border-pressci-primary"
-                  >
-                    <option value="">Choisir…</option>
-                    {COMMUNES_ABIDJAN.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <Button pleineLargeur chargement={sauvegarde} onClick={() => void sauvegarderInfos()}>
-                  Enregistrer
-                </Button>
-              </Card>
-            </>
           )}
 
           {/* ============ APPARENCE ============ */}

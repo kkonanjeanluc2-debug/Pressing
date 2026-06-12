@@ -3,12 +3,17 @@
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { createClient } from '@/lib/supabase/client'
+import type { TypeCompte } from '@/types'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 
 export default function RegisterPage() {
   const router = useRouter()
+  const [typeCompte, setTypeCompte] = useState<TypeCompte>('personne')
+  const [nomTitulaire, setNomTitulaire] = useState('')
+  const [rccm, setRccm] = useState('')
+  const [ncc, setNcc] = useState('')
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
@@ -19,6 +24,14 @@ export default function RegisterPage() {
     e.preventDefault()
     setErreur(null)
 
+    if (nomTitulaire.trim().length < 2) {
+      setErreur(
+        typeCompte === 'entreprise'
+          ? 'Entrez la raison sociale de votre entreprise.'
+          : 'Entrez votre nom complet.'
+      )
+      return
+    }
     if (motDePasse.length < 6) {
       setErreur('Le mot de passe doit faire au moins 6 caractères.')
       return
@@ -30,6 +43,14 @@ export default function RegisterPage() {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password: motDePasse,
+      options: {
+        data: {
+          type_compte: typeCompte,
+          nom: nomTitulaire.trim(),
+          rccm: rccm.trim() || null,
+          ncc: ncc.trim() || null,
+        },
+      },
     })
 
     if (authError || !authData.user) {
@@ -49,7 +70,16 @@ export default function RegisterPage() {
       return
     }
 
-    // Session active : le tableau de bord guidera la création du premier pressing
+    // Profil du titulaire (affiché sur les documents)
+    await supabase.from('profils').upsert({
+      user_id: authData.user.id,
+      type_compte: typeCompte,
+      nom: nomTitulaire.trim(),
+      rccm: rccm.trim() || null,
+      ncc: ncc.trim() || null,
+    })
+
+    // Le tableau de bord guidera la création du premier pressing
     router.push('/')
     router.refresh()
   }
@@ -85,6 +115,71 @@ export default function RegisterPage() {
       </div>
 
       <form onSubmit={creerCompte} className="space-y-4">
+        {/* Type de compte */}
+        <div>
+          <span className="mb-1 block text-sm font-medium text-gray-700">Vous êtes…</span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setTypeCompte('personne')}
+              className={`rounded-card border p-3 text-left transition-colors ${
+                typeCompte === 'personne'
+                  ? 'border-pressci-primary bg-pressci-light ring-1 ring-pressci-primary'
+                  : 'border-gray-300 bg-white'
+              }`}
+            >
+              <span className="text-xl" aria-hidden>
+                👤
+              </span>
+              <p className="text-sm font-semibold text-gray-800">Personne physique</p>
+              <p className="text-xs text-gray-500">Gérant individuel</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTypeCompte('entreprise')}
+              className={`rounded-card border p-3 text-left transition-colors ${
+                typeCompte === 'entreprise'
+                  ? 'border-pressci-primary bg-pressci-light ring-1 ring-pressci-primary'
+                  : 'border-gray-300 bg-white'
+              }`}
+            >
+              <span className="text-xl" aria-hidden>
+                🏢
+              </span>
+              <p className="text-sm font-semibold text-gray-800">Entreprise</p>
+              <p className="text-xs text-gray-500">Société immatriculée</p>
+            </button>
+          </div>
+        </div>
+
+        <Input
+          label={typeCompte === 'entreprise' ? 'Raison sociale' : 'Nom complet'}
+          name="nom_titulaire"
+          placeholder={typeCompte === 'entreprise' ? 'Ex : SARL Clean Express' : 'Ex : Konan Jean-Luc'}
+          value={nomTitulaire}
+          onChange={(e) => setNomTitulaire(e.target.value)}
+          required
+        />
+
+        {typeCompte === 'entreprise' && (
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="N° RCCM (facultatif)"
+              name="rccm"
+              placeholder="CI-ABJ-…"
+              value={rccm}
+              onChange={(e) => setRccm(e.target.value)}
+            />
+            <Input
+              label="NCC (facultatif)"
+              name="ncc"
+              placeholder="N° compte contribuable"
+              value={ncc}
+              onChange={(e) => setNcc(e.target.value)}
+            />
+          </div>
+        )}
+
         <Input
           label="Email"
           type="email"

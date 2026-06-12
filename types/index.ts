@@ -85,6 +85,20 @@ export interface Abonnement {
   created_at: string
 }
 
+export type TypeCompte = 'personne' | 'entreprise'
+
+/** Profil du propriétaire (affiché sur les documents). */
+export interface ProfilProprietaire {
+  user_id: string
+  type_compte: TypeCompte
+  /** Nom complet (personne) ou raison sociale (entreprise) */
+  nom: string
+  rccm: string | null
+  ncc: string | null
+  telephone: string | null
+  created_at: string
+}
+
 export type ModePaiementDepense =
   | 'cash'
   | 'wave'

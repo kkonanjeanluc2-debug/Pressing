@@ -6,6 +6,7 @@ import Input from '@/components/ui/Input'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
+import { useProfilProprietaire } from '@/hooks/useProfilProprietaire'
 import { createClient } from '@/lib/supabase/client'
 import {
   COMPTE_PRODUITS,
@@ -70,6 +71,7 @@ function debutDuMois(): string {
 export default function ComptabilitePage() {
   const { pressings } = usePressing()
   const { role, peut, chargement: chargementProfil } = useProfil()
+  const { proprietaire } = useProfilProprietaire(pressings[0]?.owner_id ?? null)
 
   const [onglet, setOnglet] = useState<Onglet>('journal')
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
@@ -272,8 +274,28 @@ export default function ComptabilitePage() {
               </span>
             </div>
             <h1 className="text-2xl font-bold text-white">
-              {pressingSelectionne ? pressingSelectionne.nom : `Tous les pressings (${pressings.length})`}
+              {proprietaire?.nom ??
+                (pressingSelectionne
+                  ? pressingSelectionne.nom
+                  : `Tous les pressings (${pressings.length})`)}
             </h1>
+            {proprietaire?.type_compte === 'entreprise' && (proprietaire.rccm || proprietaire.ncc) && (
+              <p className="text-xs text-pressci-light/80">
+                {[
+                  proprietaire.rccm ? `RCCM : ${proprietaire.rccm}` : null,
+                  proprietaire.ncc ? `NCC : ${proprietaire.ncc}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            )}
+            {proprietaire && (
+              <p className="text-sm font-semibold text-pressci-light">
+                {pressingSelectionne
+                  ? `Pressing : ${pressingSelectionne.nom}`
+                  : `Pressings (${pressings.length}) : ${pressings.map((p) => p.nom).join(' · ')}`}
+              </p>
+            )}
             <p className="text-sm text-pressci-light/90">
               Période du {formatDate(new Date(`${dateDebut}T00:00:00`))} au{' '}
               {formatDate(new Date(`${dateFin}T00:00:00`))}

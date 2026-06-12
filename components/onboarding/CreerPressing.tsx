@@ -78,6 +78,18 @@ export default function CreerPressing({
       statut: 'actif',
     })
 
+    // Profil du titulaire (depuis l'inscription) si pas encore créé
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>
+    if (typeof meta.nom === 'string' && meta.nom.length > 1) {
+      await supabase.from('profils').upsert({
+        user_id: user.id,
+        type_compte: meta.type_compte === 'entreprise' ? 'entreprise' : 'personne',
+        nom: meta.nom,
+        rccm: typeof meta.rccm === 'string' ? meta.rccm : null,
+        ncc: typeof meta.ncc === 'string' ? meta.ncc : null,
+      })
+    }
+
     surCreation(pressing.id as string)
   }
 
