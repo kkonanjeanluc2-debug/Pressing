@@ -1,5 +1,7 @@
 'use client'
 
+import ActiviteRecente from '@/components/dashboard/ActiviteRecente'
+import EcheancesWidget from '@/components/dashboard/EcheancesWidget'
 import KpiGrid from '@/components/dashboard/KpiGrid'
 import RevenueChart from '@/components/dashboard/RevenueChart'
 import CreerPressing from '@/components/onboarding/CreerPressing'
@@ -8,6 +10,7 @@ import PressingSwitcher from '@/components/ui/PressingSwitcher'
 import { useDashboard } from '@/hooks/useDashboard'
 import { changerPressingActif, usePressing } from '@/hooks/usePressing'
 import { usePressingsResume } from '@/hooks/usePressingsResume'
+import { useTickets } from '@/hooks/useTickets'
 import { formatFCFA } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -17,6 +20,7 @@ export default function DashboardPage() {
     pressing?.id ?? null
   )
   const { resumes, totalCaJour } = usePressingsResume(pressings)
+  const { tickets } = useTickets(pressing?.id ?? null, 'tous')
 
   if (chargementPressing || (chargement && !stats && pressing)) {
     return (
@@ -62,20 +66,12 @@ export default function DashboardPage() {
         </Link>
       </header>
 
-      {/* En-tête desktop : titre + sous-titre + action principale */}
-      <header className="hidden lg:flex lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
-          <p className="text-gray-500">
-            Vue d’ensemble de {pressings.length > 1 ? 'vos pressings' : pressing.nom}
-          </p>
-        </div>
-        <Link
-          href="/tickets/nouveau"
-          className="rounded-card bg-pressci-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-pressci-secondary"
-        >
-          + Nouveau dépôt
-        </Link>
+      {/* En-tête desktop : titre + sous-titre */}
+      <header className="hidden lg:block">
+        <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
+        <p className="text-gray-500">
+          Vue d’ensemble de {pressings.length > 1 ? 'vos pressings' : pressing.nom}
+        </p>
       </header>
 
       {erreur && (
@@ -175,27 +171,17 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
+      <div className="space-y-4 lg:grid lg:grid-cols-3 lg:items-stretch lg:gap-4 lg:space-y-0">
         <div className="lg:col-span-2">
           <RevenueChart donnees={caParSemaine} />
         </div>
 
-        {/* Raccourcis */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:content-start">
-          <Link
-            href="/caisse"
-            className="rounded-card border border-gray-200 bg-white p-4 text-center text-sm font-semibold text-pressci-primary transition-colors hover:bg-pressci-light"
-          >
-            💰 Caisse du jour
-          </Link>
-          <Link
-            href="/stats"
-            className="rounded-card border border-gray-200 bg-white p-4 text-center text-sm font-semibold text-pressci-primary transition-colors hover:bg-pressci-light"
-          >
-            📊 Rapports
-          </Link>
-        </div>
+        {/* Échéances : tickets en retard / à livrer aujourd'hui */}
+        <EcheancesWidget tickets={tickets} />
       </div>
+
+      {/* Derniers dépôts avec statut en direct */}
+      <ActiviteRecente tickets={tickets} />
 
       {/* Bouton flottant Nouveau dépôt — mobile uniquement (la sidebar a le sien) */}
       <Link
