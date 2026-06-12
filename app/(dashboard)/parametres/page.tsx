@@ -299,37 +299,27 @@ export default function ParametresPage() {
                 </div>
               </div>
 
-              {/* Type de compte */}
+              {/* Type de compte (défini à la création du compte) */}
               <div>
                 <span className="mb-1 block text-sm font-medium text-gray-700">
                   Type de compte
                 </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTypeCompte('personne')}
-                    className={`rounded-card border p-3 text-left ${
-                      typeCompte === 'personne'
-                        ? 'border-pressci-primary bg-pressci-light ring-1 ring-pressci-primary'
-                        : 'border-gray-300 bg-white'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-gray-800">👤 Personne physique</p>
-                    <p className="text-xs text-gray-500">Gérant individuel</p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTypeCompte('entreprise')}
-                    className={`rounded-card border p-3 text-left ${
-                      typeCompte === 'entreprise'
-                        ? 'border-pressci-primary bg-pressci-light ring-1 ring-pressci-primary'
-                        : 'border-gray-300 bg-white'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-gray-800">🏢 Entreprise</p>
-                    <p className="text-xs text-gray-500">Société immatriculée</p>
-                  </button>
+                <div className="flex items-center justify-between rounded-card border border-pressci-primary bg-pressci-light p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {typeCompte === 'entreprise' ? '🏢 Entreprise' : '👤 Personne physique'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {typeCompte === 'entreprise' ? 'Société immatriculée' : 'Gérant individuel'}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-pressci-primary px-2.5 py-1 text-[10px] font-bold text-white">
+                    ACTUEL
+                  </span>
                 </div>
+                <p className="mt-1 text-xs text-gray-400">
+                  Défini à la création du compte.
+                </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
