@@ -239,22 +239,9 @@ export default function CaissePage() {
         </div>
       ) : (
         <>
-          {/* Total du jour — fond blanc, montant en couleur */}
-          <div className="rounded-card border border-gray-200 bg-white p-4 text-center">
-            <p className="text-sm text-gray-500">Total encaissé aujourd’hui</p>
+          {/* Total du jour — uniquement le montant */}
+          <div className="rounded-card border border-gray-200 bg-white p-5 text-center">
             <p className="text-3xl font-bold text-pressci-primary">{formatFCFA(totalJour)}</p>
-            <div className="mt-3 flex justify-around border-t border-gray-100 pt-3 text-xs">
-              <div>
-                <p className="text-gray-400">Hier</p>
-                <p className="font-semibold text-gray-700">{formatFCFA(donnees?.totalHier ?? 0)}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Moyenne / jour (7j)</p>
-                <p className="font-semibold text-gray-700">
-                  {formatFCFA(donnees?.moyenneSemaine ?? 0)}
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Totaux par mode de paiement */}
