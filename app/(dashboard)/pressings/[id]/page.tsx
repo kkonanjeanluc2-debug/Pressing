@@ -4,6 +4,7 @@ import GestionAgents from '@/components/pressings/GestionAgents'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
+import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
 import { usePressingsResume } from '@/hooks/usePressingsResume'
 import { useProfil } from '@/hooks/useProfil'
@@ -14,11 +15,56 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
+type Periode = 'jour' | 'semaine' | 'mois'
+
+const PERIODES: { id: Periode; label: string }[] = [
+  { id: 'jour', label: "Aujourd'hui" },
+  { id: 'semaine', label: '7 jours' },
+  { id: 'mois', label: 'Ce mois' },
+]
+
+function debutJourLocal(decalageJours = 0): Date {
+  const d = new Date()
+  d.setDate(d.getDate() + decalageJours)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function debutMoisLocal(): Date {
+  const d = new Date()
+  d.setDate(1)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
 export default function PressingDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { pressings, chargement, recharger } = usePressing()
   const { role } = useProfil()
   const { resumes, chargement: chargementResumes } = usePressingsResume(pressings)
+
+  const [periodeActive, setPeriodeActive] = useState<Periode>('jour')
+
+  const debutPeriode =
+    periodeActive === 'semaine'
+      ? debutJourLocal(-6)
+      : periodeActive === 'mois'
+        ? debutMoisLocal()
+        : debutJourLocal()
+
+  const { donnees: totalPeriode, chargement: chargementTotal } = useDonneesCachees<number>(
+    `encaisse_${params.id}_${periodeActive}_${new Date().toISOString().slice(0, 10)}`,
+    async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('encaissements')
+        .select('montant')
+        .eq('pressing_id', params.id)
+        .gte('created_at', debutPeriode.toISOString())
+      return (data ?? []).reduce((s, e) => s + (e.montant as number), 0)
+    },
+    'Impossible de charger le total.'
+  )
 
   // Édition des informations du pressing
   const [edition, setEdition] = useState(false)
@@ -123,6 +169,32 @@ export default function PressingDetailPage({ params }: { params: { id: string } 
           <p className="text-xs text-gray-500">Créances</p>
         </Card>
       </div>
+
+      {/* Total encaissé par période */}
+      <Card className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-gray-700">Total encaissé</h2>
+          <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+            {PERIODES.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPeriodeActive(p.id)}
+                className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
+                  periodeActive === p.id
+                    ? 'bg-pressci-primary text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="text-3xl font-bold text-pressci-primary">
+          {chargementTotal ? '…' : formatFCFA(totalPeriode ?? 0)}
+        </p>
+      </Card>
 
       {/* Travailler dans ce pressing : ouvre ses tickets filtrés */}
       <Button pleineLargeur onClick={() => router.push(`/tickets?pressing=${pressing.id}`)}>

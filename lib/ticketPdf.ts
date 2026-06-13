@@ -43,7 +43,7 @@ export function genererTicketPdf(
   doc.setTextColor(...VERT_CLAIR)
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text('PressCI — Gestion de pressing', 28, 14)
+  doc.text('Pressing Ivoire', 28, 14)
 
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(18)
@@ -188,7 +188,7 @@ export function genererTicketPdf(
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(150)
-  doc.text('Document généré par PressCI — Gestion de pressing', 105, 287, { align: 'center' })
+  doc.text('Document généré par Pressing Ivoire', 105, 287, { align: 'center' })
 
   return doc
 }

@@ -3,14 +3,14 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'PressCI — Gestion de pressing',
+  title: 'Pressing Ivoire — Gestion de pressing',
   description:
-    "Gérez votre pressing depuis votre téléphone : dépôts, clients, caisse, SMS. Conçu pour la Côte d'Ivoire.",
+    "Gérez votre pressing depuis votre téléphone : dépôts, clients, caisse, notifications. Conçu pour la Côte d'Ivoire.",
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'PressCI',
+    title: 'Pressing Ivoire',
   },
 }
 

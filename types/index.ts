@@ -101,6 +101,7 @@ export interface ProfilProprietaire {
   rccm: string | null
   ncc: string | null
   telephone: string | null
+  logo_url: string | null
   created_at: string
 }
 

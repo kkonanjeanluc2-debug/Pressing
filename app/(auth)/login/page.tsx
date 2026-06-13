@@ -63,12 +63,10 @@ export default function LoginPage() {
 
   return (
     <main className="flex flex-col justify-center">
-      <div className="mb-10 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pressci-primary text-3xl font-bold text-white">
-          P
-        </div>
-        <h1 className="text-2xl font-bold text-pressci-dark">PressCI</h1>
-        <p className="mt-1 text-gray-500">Votre pressing dans la poche</p>
+      {/* Titre visible uniquement sur desktop (le logo est dans le panneau gauche du layout) */}
+      <div className="mb-8 hidden text-center lg:block">
+        <h1 className="text-2xl font-bold text-pressci-dark">Connexion</h1>
+        <p className="mt-1 text-gray-500">Bienvenue sur Pressing Ivoire</p>
       </div>
 
       <form onSubmit={seConnecter} className="space-y-4">

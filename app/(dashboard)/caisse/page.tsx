@@ -28,13 +28,34 @@ interface EncaissementAvecTicket {
 
 interface DonneesCaisse {
   encaissements: EncaissementAvecTicket[]
-  totalHier: number
-  moyenneSemaine: number
+}
+
+type Periode = 'jour' | 'semaine' | 'mois' | 'perso'
+
+const PERIODES: { id: Periode; label: string }[] = [
+  { id: 'jour', label: "Aujourd'hui" },
+  { id: 'semaine', label: '7 jours' },
+  { id: 'mois', label: 'Ce mois' },
+  { id: 'perso', label: 'Dates' },
+]
+
+const TITRE_PERIODE: Record<Periode, string> = {
+  jour: 'du jour',
+  semaine: '— 7 derniers jours',
+  mois: '— ce mois',
+  perso: '— période personnalisée',
 }
 
 function debutJour(decalageJours = 0): Date {
   const d = new Date()
   d.setDate(d.getDate() + decalageJours)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function debutMois(): Date {
+  const d = new Date()
+  d.setDate(1)
   d.setHours(0, 0, 0, 0)
   return d
 }
@@ -64,43 +85,44 @@ export default function CaissePage() {
   const { role, agent, peut, chargement: chargementProfil } = useProfil()
   const { proprietaire } = useProfilProprietaire(pressings[0]?.owner_id ?? null)
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
+  const [periodeActive, setPeriodeActive] = useState<Periode>('jour')
+  const [dateDebut, setDateDebut] = useState(toInputDate(new Date()))
+  const [dateFin, setDateFin] = useState(toInputDate(new Date()))
 
   const idsTous = pressings.map((p) => p.id)
   const idsSelection =
     pressingFiltre === 'tous' ? idsTous : idsTous.filter((id) => id === pressingFiltre)
 
+  const debut =
+    periodeActive === 'semaine'
+      ? debutJour(-6)
+      : periodeActive === 'mois'
+        ? debutMois()
+        : periodeActive === 'perso'
+          ? new Date(dateDebut + 'T00:00:00')
+          : debutJour()
+
+  const fin =
+    periodeActive === 'perso' ? new Date(dateFin + 'T23:59:59') : new Date()
+
+  const clePeriode =
+    periodeActive === 'perso' ? `${dateDebut}_${dateFin}` : `${periodeActive}_${toInputDate(new Date())}`
+
   const { donnees, chargement, erreur } = useDonneesCachees<DonneesCaisse>(
-    idsSelection.length > 0
-      ? `caisse_${idsSelection.join('_')}_${toInputDate(new Date())}`
+    idsSelection.length > 0 && (periodeActive !== 'perso' || dateDebut <= dateFin)
+      ? `caisse_${idsSelection.join('_')}_${clePeriode}`
       : null,
     async () => {
       const supabase = createClient()
-      const [jour, semaine] = await Promise.all([
-        supabase
-          .from('encaissements')
-          .select('*, ticket:tickets(numero, client:clients(nom))')
-          .in('pressing_id', idsSelection)
-          .gte('created_at', debutJour().toISOString())
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('encaissements')
-          .select('montant, created_at')
-          .in('pressing_id', idsSelection)
-          .gte('created_at', debutJour(-7).toISOString())
-          .lt('created_at', debutJour().toISOString()),
-      ])
-      if (jour.error || semaine.error) throw jour.error ?? semaine.error
-
-      const lignes = (semaine.data ?? []) as Array<{ montant: number; created_at: string }>
-      const totalHier = lignes
-        .filter((e) => new Date(e.created_at) >= debutJour(-1))
-        .reduce((s, e) => s + e.montant, 0)
-
-      return {
-        encaissements: (jour.data ?? []) as EncaissementAvecTicket[],
-        totalHier,
-        moyenneSemaine: Math.round(lignes.reduce((s, e) => s + e.montant, 0) / 7),
-      }
+      const { data, error } = await supabase
+        .from('encaissements')
+        .select('*, ticket:tickets(numero, client:clients(nom))')
+        .in('pressing_id', idsSelection)
+        .gte('created_at', debut.toISOString())
+        .lte('created_at', fin.toISOString())
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return { encaissements: (data ?? []) as EncaissementAvecTicket[] }
     },
     'Impossible de charger la caisse. Vérifiez votre réseau.'
   )
@@ -118,7 +140,7 @@ export default function CaissePage() {
   }
 
   const encaissements = donnees?.encaissements ?? []
-  const totalJour = encaissements.reduce((s, e) => s + e.montant, 0)
+  const totalPeriode = encaissements.reduce((s, e) => s + e.montant, 0)
   const parMode = encaissements.reduce<Partial<Record<ModePaiement, number>>>((acc, e) => {
     acc[e.mode_paiement] = (acc[e.mode_paiement] ?? 0) + e.montant
     return acc
@@ -150,11 +172,14 @@ export default function CaissePage() {
         <div className="flex items-start justify-between rounded-card bg-pressci-dark p-5 text-white">
           <div>
             <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-accent text-base font-bold text-pressci-dark">
-                P
-              </span>
+              {proprietaire?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={proprietaire.logo_url} alt="Logo" className="h-10 w-10 rounded-lg object-contain bg-white/10 p-0.5" />
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-accent text-base font-bold text-pressci-dark">P</span>
+              )}
               <span className="text-sm font-semibold text-pressci-accent">
-                PressCI — Gestion de pressing
+                Pressing Ivoire
               </span>
             </div>
             {/* Identité du propriétaire (entreprise ou personne physique) */}
@@ -218,7 +243,9 @@ export default function CaissePage() {
           ←
         </Link>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-pressci-dark">Caisse du jour</h1>
+          <h1 className="text-xl font-bold text-pressci-dark">
+            Caisse {TITRE_PERIODE[periodeActive]}
+          </h1>
           <p className="text-sm text-gray-500">{formatDate(new Date())}</p>
         </div>
         <Link
@@ -228,6 +255,44 @@ export default function CaissePage() {
           Comptabilité →
         </Link>
       </header>
+
+      {/* Sélecteur de période */}
+      <div className="flex flex-col gap-3 print:hidden">
+        <div className="flex rounded-xl border border-gray-200 bg-gray-50 p-1">
+          {PERIODES.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setPeriodeActive(p.id)}
+              className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-colors ${
+                periodeActive === p.id
+                  ? 'bg-pressci-primary text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {periodeActive === 'perso' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={dateDebut}
+              onChange={(e) => setDateDebut(e.target.value)}
+              className="flex-1 rounded-card border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-pressci-primary"
+            />
+            <span className="text-sm text-gray-400">→</span>
+            <input
+              type="date"
+              value={dateFin}
+              min={dateDebut}
+              onChange={(e) => setDateFin(e.target.value)}
+              className="flex-1 rounded-card border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-pressci-primary"
+            />
+          </div>
+        )}
+      </div>
 
       {/* Filtre par pressing (propriétaire multi-pressings) */}
       {pressings.length > 1 && (
@@ -259,9 +324,9 @@ export default function CaissePage() {
         </div>
       ) : (
         <>
-          {/* Total du jour — uniquement le montant */}
+          {/* Total encaissé — uniquement le montant */}
           <div className="rounded-card border border-gray-200 bg-white p-5 text-center">
-            <p className="text-3xl font-bold text-pressci-primary">{formatFCFA(totalJour)}</p>
+            <p className="text-3xl font-bold text-pressci-primary">{formatFCFA(totalPeriode)}</p>
           </div>
 
           {/* Totaux par mode de paiement */}
@@ -285,7 +350,7 @@ export default function CaissePage() {
           {/* Liste des encaissements */}
           {encaissements.length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-500">
-              Aucun encaissement aujourd’hui pour l’instant.
+              Aucun encaissement sur cette période.
             </p>
           ) : groupesParPressing ? (
             /* ---- Vue globale : classée par pressing avec sous-totaux ---- */
@@ -350,14 +415,13 @@ export default function CaissePage() {
               </div>
             </div>
             <div className="mt-6 rounded-full bg-pressci-light px-4 py-1.5 text-center text-[10px] font-medium text-pressci-dark">
-              Document généré par PressCI le {formatDate(new Date())} à {formatHeure(new Date())} —
-              www.pressci.app
+              Document généré par Pressing Ivoire le {formatDate(new Date())} à {formatHeure(new Date())}
             </div>
           </div>
 
           <div className="print:hidden">
             <Button pleineLargeur variante="outline" onClick={() => window.print()}>
-              🧾 Clôturer la journée (imprimer / PDF)
+              🧾 Imprimer / exporter en PDF
             </Button>
             {pressings.length > 1 && (
               <p className="mt-1 text-center text-xs text-gray-400">
