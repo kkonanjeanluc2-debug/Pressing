@@ -51,6 +51,17 @@ const LIENS = [
       </svg>
     ),
   },
+  {
+    href: '/admin/partenaires',
+    label: 'Partenaires',
+    actif: (p: string) => p.startsWith('/admin/partenaires'),
+    icone: (
+      <svg className={ICONE} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6-4a3 3 0 11-3-3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c1.5 0 2.7 1 3 2.4" />
+      </svg>
+    ),
+  },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -94,7 +105,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-slate-900 text-slate-300 lg:flex">
         <div className="border-b border-white/10 px-5 py-5">
           <p className="text-sm font-bold uppercase tracking-wide text-white">Console Admin</p>
-          <p className="text-xs text-slate-400">PressCI — plateforme</p>
+          <p className="text-xs text-slate-400">Pressing Ivoire — plateforme</p>
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
