@@ -7,6 +7,7 @@ import RevenueChart from '@/components/dashboard/RevenueChart'
 import CreerPressing from '@/components/onboarding/CreerPressing'
 import Card from '@/components/ui/Card'
 import { useDashboard } from '@/hooks/useDashboard'
+import { usePlan } from '@/hooks/usePlan'
 import { usePressing } from '@/hooks/usePressing'
 import { usePressingsResume } from '@/hooks/usePressingsResume'
 import { useProfil } from '@/hooks/useProfil'
@@ -65,6 +66,7 @@ export default function DashboardPage() {
   }, [])
   const { pressing, pressings, chargement: chargementPressing, recharger } = usePressing()
   const { role, agent, peut } = useProfil()
+  const { plan, planAutorise } = usePlan(pressings[0]?.owner_id ?? null)
 
   async function seDeconnecterAgent() {
     const supabase = createClient()
@@ -115,6 +117,25 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4 px-4 pt-5">
+      {/* Bannière plan gratuit */}
+      {plan === 'gratuit' && role === 'proprietaire' && !planAutorise('pro') && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-lg">⚡</span>
+            <div className="text-sm">
+              <span className="font-semibold text-amber-800">Forfait Gratuit</span>
+              <span className="ml-2 text-amber-600">· 20 tickets/mois · 1 pressing</span>
+            </div>
+          </div>
+          <Link
+            href="/parametres"
+            className="shrink-0 rounded-full bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
+          >
+            Passer au Pro
+          </Link>
+        </div>
+      )}
+
       {/* En-tête mobile */}
       <header className="flex items-center justify-between lg:hidden">
         <div>

@@ -79,7 +79,6 @@ export default function RegisterPage() {
         nom: nomTitulaire.trim(),
         rccm: rccm.trim() || null,
         ncc: ncc.trim() || null,
-        parraine_par: codeParrainage.trim().toLowerCase() || null,
       }),
       supabase.from('abonnements').insert({
         owner_id: authData.user.id,
@@ -87,6 +86,15 @@ export default function RegisterPage() {
         statut: 'actif',
       }),
     ])
+
+    // Parrainage : mise à jour séparée (nécessite la migration 015 — best-effort)
+    const codeNormalise = codeParrainage.trim().toLowerCase()
+    if (codeNormalise) {
+      await supabase
+        .from('profils')
+        .update({ parraine_par: codeNormalise })
+        .eq('user_id', authData.user.id)
+    }
 
     // Le tableau de bord guidera la création du premier pressing
     router.push('/')

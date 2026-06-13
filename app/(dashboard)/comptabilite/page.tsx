@@ -4,9 +4,11 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
+import { usePlan } from '@/hooks/usePlan'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
 import { useProfilProprietaire } from '@/hooks/useProfilProprietaire'
+import BlocagePlan from '@/components/ui/BlocagePlan'
 import { createClient } from '@/lib/supabase/client'
 import {
   COMPTE_PRODUITS,
@@ -72,6 +74,11 @@ export default function ComptabilitePage() {
   const { pressings } = usePressing()
   const { role, peut, chargement: chargementProfil } = useProfil()
   const { proprietaire } = useProfilProprietaire(pressings[0]?.owner_id ?? null)
+  const { planAutorise, chargement: chargementPlan } = usePlan(pressings[0]?.owner_id ?? null)
+
+  if (!chargementPlan && !planAutorise('pro')) {
+    return <BlocagePlan planRequis="pro" fonctionnalite="La comptabilité" />
+  }
 
   const [onglet, setOnglet] = useState<Onglet>('journal')
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
@@ -266,11 +273,14 @@ export default function ComptabilitePage() {
         <div className="flex items-start justify-between rounded-card bg-pressci-dark p-5 text-white">
           <div>
             <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-accent text-base font-bold text-pressci-dark">
-                P
-              </span>
+              {proprietaire?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={proprietaire.logo_url} alt="Logo" className="h-10 w-10 rounded-lg object-contain bg-white/10 p-0.5" />
+              ) : (
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-accent text-base font-bold text-pressci-dark">P</span>
+              )}
               <span className="text-sm font-semibold text-pressci-accent">
-                PressCI — Gestion de pressing
+                Pressing Ivoire
               </span>
             </div>
             <h1 className="text-2xl font-bold text-white">

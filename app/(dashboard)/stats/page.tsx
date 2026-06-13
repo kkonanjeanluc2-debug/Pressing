@@ -1,7 +1,9 @@
 'use client'
 
 import Card from '@/components/ui/Card'
+import BlocagePlan from '@/components/ui/BlocagePlan'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
+import { usePlan } from '@/hooks/usePlan'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
 import { createClient } from '@/lib/supabase/client'
@@ -56,6 +58,11 @@ const PERIODES: Array<{ id: Periode; label: string }> = [
 export default function StatsPage() {
   const { pressings } = usePressing()
   const { peut, chargement: chargementProfil } = useProfil()
+  const { planAutorise, chargement: chargementPlan } = usePlan(pressings[0]?.owner_id ?? null)
+
+  if (!chargementPlan && !planAutorise('pro')) {
+    return <BlocagePlan planRequis="pro" fonctionnalite="Les statistiques avancées" />
+  }
   const [periode, setPeriode] = useState<Periode>('semaine')
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
 
