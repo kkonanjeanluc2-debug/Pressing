@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const ROUTES_PUBLIQUES = ['/login', '/register']
+const ROUTES_PUBLIQUES = ['/login', '/register', '/landing']
 
 /**
  * Rafraîchit la session Supabase et protège les routes du dashboard.
