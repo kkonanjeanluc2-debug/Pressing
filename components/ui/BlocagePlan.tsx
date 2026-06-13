@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { useState } from 'react'
 
 interface BlocagePlanProps {
   planRequis: 'pro' | 'reseau'
@@ -8,8 +8,28 @@ interface BlocagePlanProps {
 }
 
 export default function BlocagePlan({ planRequis, fonctionnalite }: BlocagePlanProps) {
+  const [enCours, setEnCours] = useState(false)
   const label = planRequis === 'reseau' ? 'Réseau' : 'Pro'
-  const prix = planRequis === 'reseau' ? '15 000 FCFA/mois' : '7 500 FCFA/mois'
+  const prix = planRequis === 'reseau' ? '12 000 FCFA/mois' : '5 000 FCFA/mois'
+
+  async function souscrire() {
+    setEnCours(true)
+    try {
+      const res = await fetch('/api/abonnement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planRequis }),
+      })
+      const data = (await res.json()) as { succes: boolean; url?: string }
+      if (data.succes && data.url) {
+        window.location.href = data.url
+        return
+      }
+    } catch {
+      // silencieux
+    }
+    setEnCours(false)
+  }
 
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center px-4 py-16 text-center">
@@ -49,13 +69,15 @@ export default function BlocagePlan({ planRequis, fonctionnalite }: BlocagePlanP
         </ul>
       </div>
 
-      <div className="mt-6 flex gap-3">
-        <Link
-          href="/parametres"
-          className="rounded-full bg-pressci-primary px-6 py-2.5 text-sm font-bold text-white hover:bg-pressci-dark"
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => void souscrire()}
+          disabled={enCours}
+          className="rounded-full bg-pressci-primary px-6 py-2.5 text-sm font-bold text-white hover:bg-pressci-dark disabled:opacity-60"
         >
-          Passer au plan {label}
-        </Link>
+          {enCours ? 'Redirection…' : `Passer au plan ${label}`}
+        </button>
       </div>
     </div>
   )
