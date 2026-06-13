@@ -221,7 +221,7 @@ export default function RegisterPage() {
 
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Code partenaire <span className="font-normal text-gray-400">(facultatif)</span>
+            Code promo <span className="font-normal text-gray-400">(facultatif)</span>
           </label>
           <Input
             name="code_parrainage"

@@ -426,7 +426,7 @@ export default function AdminPartenairesPage() {
                 </div>
                 <div className="space-y-3">
                   <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                    <p className="mb-1 text-xs font-semibold uppercase text-gray-400">Code parrainage</p>
+                    <p className="mb-1 text-xs font-semibold uppercase text-gray-400">Code promo</p>
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-lg font-bold text-pressci-primary">{creation.code_parrainage}</span>
                       <button type="button" onClick={() => void copierTexte(creation.code_parrainage, 'code')}

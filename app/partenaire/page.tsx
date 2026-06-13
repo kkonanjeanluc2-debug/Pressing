@@ -77,7 +77,7 @@ export default function PartenaireDashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Tableau de bord partenaire</h1>
-        <p className="text-sm text-gray-500">Suivi de vos parrainages et commissions</p>
+        <p className="text-sm text-gray-500">Suivi de vos codes promo et commissions</p>
       </div>
 
       {/* Alerte contrat non signé */}
@@ -106,7 +106,7 @@ export default function PartenaireDashboardPage() {
             </svg>
           </div>
           <p className="text-2xl font-bold text-gray-900">{d.nb_inscrits}</p>
-          <p className="text-xs text-gray-500">Utilisateurs parrainés</p>
+          <p className="text-xs text-gray-500">Utilisateurs inscrits</p>
         </Card>
 
         <Card className="space-y-2 p-5">
@@ -140,10 +140,10 @@ export default function PartenaireDashboardPage() {
         </Card>
       </div>
 
-      {/* Code de parrainage */}
+      {/* Code promo */}
       <Card className="flex items-center justify-between gap-4 p-5">
         <div>
-          <p className="text-xs font-semibold uppercase text-gray-400">Votre code de parrainage</p>
+          <p className="text-xs font-semibold uppercase text-gray-400">Votre code promo</p>
           <p className="mt-1 font-mono text-2xl font-bold tracking-wider text-pressci-primary">
             {d.code_parrainage.toUpperCase()}
           </p>
@@ -163,7 +163,7 @@ export default function PartenaireDashboardPage() {
       {/* Tableau des inscrits */}
       <Card className="p-0">
         <div className="flex items-center justify-between px-5 py-4">
-          <h2 className="font-bold text-gray-900">Utilisateurs parrainés</h2>
+          <h2 className="font-bold text-gray-900">Utilisateurs inscrits</h2>
           <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
             {d.nb_inscrits}
           </span>
@@ -173,10 +173,10 @@ export default function PartenaireDashboardPage() {
           <div className="border-t border-gray-100 py-12 text-center">
             <p className="text-4xl">👥</p>
             <p className="mt-3 text-sm font-semibold text-gray-500">
-              Aucun utilisateur parrainé pour l&apos;instant.
+              Aucun utilisateur inscrit avec votre code pour l&apos;instant.
             </p>
             <p className="mt-1 text-xs text-gray-400">
-              Partagez votre code{' '}
+              Partagez votre code promo{' '}
               <span className="font-mono font-bold">{d.code_parrainage.toUpperCase()}</span>{' '}
               lors des inscriptions.
             </p>
