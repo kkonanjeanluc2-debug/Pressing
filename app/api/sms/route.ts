@@ -16,6 +16,7 @@ interface CorpsRequete {
  *
  * La session de l'utilisateur (cookies) est utilisée : RLS garantit
  * qu'il ne peut toucher que les données de son pressing.
+ * Réservé aux plans Pro et Réseau.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = createClient()
@@ -25,6 +26,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ succes: false, erreur: 'Non connecté' }, { status: 401 })
+  }
+
+  // Vérification du plan : SMS Orange réservés aux plans Pro et Réseau
+  const { data: planData } = await supabase.rpc('plan_actuel_utilisateur')
+  const plan = (planData as string | null) ?? 'gratuit'
+  if (plan === 'gratuit') {
+    return NextResponse.json(
+      {
+        succes: false,
+        erreur:
+          'Les notifications SMS sont disponibles à partir du plan Pro. Mettez à niveau votre abonnement dans les paramètres.',
+      },
+      { status: 403 }
+    )
   }
 
   let corps: CorpsRequete

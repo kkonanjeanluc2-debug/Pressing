@@ -3,6 +3,7 @@
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
+import { usePlan } from '@/hooks/usePlan'
 import { useProfil } from '@/hooks/useProfil'
 import { useProfilProprietaire } from '@/hooks/useProfilProprietaire'
 import { changerStatutTicket } from '@/hooks/useTickets'
@@ -39,6 +40,8 @@ const MODES_ENCAISSEMENT: ModePaiement[] = [
 export default function TicketDetail({ ticket, pressing, recharger, nouveauticket }: TicketDetailProps) {
   const { peut } = useProfil()
   const { proprietaire } = useProfilProprietaire(pressing.owner_id)
+  const { planAutorise } = usePlan(pressing.owner_id)
+  const [modaleUpgrade, setModaleUpgrade] = useState(false)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -361,15 +364,56 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         {ticket.statut === 'pret' && (
           <>
             {!ticket.sms_envoye && peut('envoyer_sms') && (
-              <button
-                type="button"
-                disabled={enCours}
-                onClick={() => void notifierWhatsApp()}
-                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-card bg-[#25D366] px-4 py-3 text-base font-semibold text-white active:brightness-90 disabled:opacity-60"
-              >
-                💬 Notifier le client sur WhatsApp
-              </button>
+              planAutorise('pro') ? (
+                <button
+                  type="button"
+                  disabled={enCours}
+                  onClick={() => void notifierWhatsApp()}
+                  className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-card bg-[#25D366] px-4 py-3 text-base font-semibold text-white active:brightness-90 disabled:opacity-60"
+                >
+                  💬 Notifier le client sur WhatsApp
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setModaleUpgrade(true)}
+                  className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-card border-2 border-dashed border-pressci-primary bg-pressci-light px-4 py-3 text-sm font-semibold text-pressci-primary"
+                >
+                  💬 Notifier sur WhatsApp — <span className="rounded-full bg-pressci-primary px-2 py-0.5 text-[10px] text-white">Pro</span>
+                </button>
+              )
             )}
+
+            {/* Modale upgrade plan */}
+            {modaleUpgrade && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+                  <p className="mb-2 text-3xl">🚀</p>
+                  <h3 className="mb-2 text-lg font-bold text-gray-900">Fonctionnalité Pro</h3>
+                  <p className="mb-6 text-sm text-gray-500">
+                    Les notifications WhatsApp clients sont disponibles à partir du plan{' '}
+                    <strong>Pro (5 000 F/mois)</strong>. Passez au Pro pour notifier vos clients en un clic.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href="/parametres"
+                      className="rounded-full bg-pressci-primary py-3 text-sm font-bold text-white"
+                      onClick={() => setModaleUpgrade(false)}
+                    >
+                      Passer au plan Pro →
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setModaleUpgrade(false)}
+                      className="py-2 text-sm text-gray-500"
+                    >
+                      Plus tard
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {peut('changer_statut') && (resteAPayer === 0 || peut('encaisser')) && (
               <Button pleineLargeur chargement={enCours} onClick={() => void marquerRecupereSansEncaissement()}>
                 Marquer récupéré {resteAPayer > 0 && `(encaisser ${formatFCFA(resteAPayer)})`}
@@ -586,7 +630,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         <p className="text-center font-semibold">Merci de votre confiance !</p>
         <p className="text-center">Présentez ce ticket au retrait.</p>
         <p className="mt-1 text-center text-[9px] text-gray-500">
-          PressCI — {formatDate(new Date())} {formatHeure(new Date())}
+          Pressing Ivoire — {formatDate(new Date())} {formatHeure(new Date())}
         </p>
       </div>
     )}

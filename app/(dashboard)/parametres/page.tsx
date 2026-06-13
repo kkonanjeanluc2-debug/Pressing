@@ -48,6 +48,8 @@ export default function ParametresPage() {
   const [ncc, setNcc] = useState('')
   const [telGerant, setTelGerant] = useState('')
   const [sauvegardeProfil, setSauvegardeProfil] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [uploadEnCours, setUploadEnCours] = useState(false)
 
   const pressing = pressings[0] ?? null
 
@@ -70,7 +72,7 @@ export default function ParametresPage() {
       window.history.replaceState({}, '', '/parametres')
       setSection('abonnement')
       setErreur(
-        'Le paiement a échoué ou a été annulé. Aucun montant n’a été débité — vous pouvez réessayer.'
+        "Le paiement a échoué ou a été annulé. Aucun montant n'a été débité — vous pouvez réessayer."
       )
     }
   }, [])
@@ -100,6 +102,7 @@ export default function ParametresPage() {
         setRccm((profil.rccm as string | null) ?? '')
         setNcc((profil.ncc as string | null) ?? '')
         setTelGerant((profil.telephone as string | null) ?? '')
+        setLogoUrl((profil.logo_url as string | null) ?? null)
       } else {
         if (meta.type_compte === 'entreprise') setTypeCompte('entreprise')
         if (typeof meta.nom === 'string') setNomGerant(meta.nom)
@@ -226,11 +229,46 @@ export default function ParametresPage() {
         window.location.href = data.url
         return
       }
-      setErreur(data.erreur ?? 'Le paiement n’a pas pu être lancé. Réessayez.')
+      setErreur(data.erreur ?? "Le paiement n'a pas pu être lancé. Réessayez.")
     } catch {
-      setErreur('Le paiement n’a pas pu être lancé. Vérifiez votre réseau.')
+      setErreur("Le paiement n'a pas pu être lancé. Vérifiez votre réseau.")
     }
     setPaiementEnCours(null)
+  }
+
+  async function uploadLogoFn(file: File) {
+    if (!userId) return
+    if (file.size > 2 * 1024 * 1024) {
+      setErreur('Le fichier est trop grand (maximum 2 MB).')
+      return
+    }
+    setUploadEnCours(true)
+    setErreur(null)
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const path = `${userId}/logo.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('logos')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (uploadError) {
+      setErreur(
+        'Upload impossible. Assurez-vous que le bucket "logos" (public) existe dans Supabase Storage.'
+      )
+      setUploadEnCours(false)
+      return
+    }
+    const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(path)
+    const urlAvecTimestamp = `${publicUrl}?t=${Date.now()}`
+    await supabase.from('profils').upsert({ user_id: userId, logo_url: urlAvecTimestamp })
+    setLogoUrl(urlAvecTimestamp)
+    notifier('Logo mis à jour ✅ — il apparaîtra en en-tête de vos documents.')
+    setUploadEnCours(false)
+  }
+
+  async function supprimerLogo() {
+    if (!userId) return
+    await supabase.from('profils').update({ logo_url: null }).eq('user_id', userId)
+    setLogoUrl(null)
+    notifier('Logo supprimé.')
   }
 
   async function seDeconnecter() {
@@ -295,6 +333,7 @@ export default function ParametresPage() {
         <div className="space-y-4 lg:col-span-3">
           {/* ============ PROFIL ============ */}
           {section === 'profil' && (
+            <>
             <Card className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-pressci-primary text-2xl font-bold text-white">
@@ -380,6 +419,56 @@ export default function ParametresPage() {
                 Enregistrer le profil
               </Button>
             </Card>
+
+            {/* ---- Logo de l'établissement ---- */}
+            <Card className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700">Logo de votre établissement</h3>
+                <p className="text-xs text-gray-400">
+                  Affiché en en-tête de tous vos documents imprimés (caisse, comptabilité, tickets).
+                </p>
+              </div>
+              <div className="flex items-center gap-5">
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-200 bg-gray-50">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoUrl} alt="Logo" className="h-full w-full object-contain p-1" />
+                  ) : (
+                    <span className="text-3xl text-gray-300">🏢</span>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <label
+                    htmlFor="logo-upload"
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-card border border-pressci-primary px-4 py-2 text-sm font-semibold text-pressci-primary transition-colors hover:bg-pressci-light ${uploadEnCours ? 'pointer-events-none opacity-50' : ''}`}
+                  >
+                    {uploadEnCours ? '⏳ Upload en cours…' : '📤 Choisir un logo'}
+                  </label>
+                  <input
+                    id="logo-upload"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) void uploadLogoFn(file)
+                      e.target.value = ''
+                    }}
+                  />
+                  <p className="text-xs text-gray-400">PNG, JPG ou SVG — taille maximale 2 MB</p>
+                  {logoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => void supprimerLogo()}
+                      className="block text-xs font-medium text-red-500 hover:text-red-700"
+                    >
+                      Supprimer le logo
+                    </button>
+                  )}
+                </div>
+              </div>
+            </Card>
+            </>
           )}
 
           {/* ============ APPARENCE ============ */}
@@ -407,7 +496,7 @@ export default function ParametresPage() {
                 ))}
               </div>
               <p className="text-xs text-gray-400">
-                Le thème est mémorisé sur cet appareil. L’impression des documents reste toujours
+                Le thème est mémorisé sur cet appareil. L'impression des documents reste toujours
                 sur fond clair.
               </p>
             </Card>
@@ -444,7 +533,7 @@ export default function ParametresPage() {
               <Card className="space-y-3">
                 <h2 className="text-sm font-semibold text-gray-700">Sessions</h2>
                 <p className="text-sm text-gray-500">
-                  Si vous pensez que quelqu’un d’autre utilise votre compte, déconnectez tous les
+                  Si vous pensez que quelqu'un d'autre utilise votre compte, déconnectez tous les
                   appareils : il faudra se reconnecter partout avec le mot de passe.
                 </p>
                 <Button pleineLargeur variante="danger" onClick={() => void deconnecterPartout()}>
@@ -466,59 +555,129 @@ export default function ParametresPage() {
 
           {/* ============ ABONNEMENT ============ */}
           {section === 'abonnement' && (
-            <Card className="space-y-3">
-              <div>
-                <h2 className="text-sm font-semibold text-gray-700">Abonnement du compte</h2>
-                <p className="text-xs text-gray-500">
-                  Le forfait est pris par le propriétaire/entreprise et couvre l’ensemble de vos
-                  pressings (le nombre de pressings dépend du forfait).
-                </p>
-              </div>
+            <>
+              {/* Plan actuel + date d'expiration */}
+              <Card className="space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-gray-700">Forfait actuel</h2>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Couvre l'ensemble de vos pressings.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-pressci-primary px-3 py-1 text-xs font-bold text-white">
+                    {PLANS.find((p) => p.id === planActuel)?.nom ?? 'Gratuit'}
+                  </span>
+                </div>
 
-              <div className="space-y-2">
-                {PLANS.map((p) => {
-                  const actif = p.id === planActuel
-                  return (
-                    <div
-                      key={p.id}
-                      className={`flex items-center justify-between rounded-card border p-3 ${
-                        actif ? 'border-pressci-primary bg-pressci-light' : 'border-gray-200'
-                      }`}
-                    >
-                      <div>
-                        <p className="font-semibold text-gray-800">
-                          {p.nom}{' '}
-                          {actif && (
-                            <span className="rounded-full bg-pressci-primary px-2 py-0.5 text-[10px] font-bold text-white">
-                              ACTUEL
-                            </span>
+                {planActuel !== 'gratuit' && abonnement?.date_fin && (
+                  <div className="rounded-card bg-pressci-light px-3 py-2 text-xs text-pressci-dark">
+                    Abonnement valide jusqu&apos;au{' '}
+                    <strong>
+                      {new Date(abonnement.date_fin).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </strong>
+                  </div>
+                )}
+
+                {planActuel === 'gratuit' && (
+                  <p className="text-xs text-gray-400">
+                    Plan gratuit · 1 pressing · 20 tickets par mois
+                  </p>
+                )}
+
+                <a
+                  href="/landing#tarifs"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-block text-xs font-semibold text-pressci-primary hover:underline"
+                >
+                  Comparer les forfaits →
+                </a>
+              </Card>
+
+              {/* Sélecteur de plan */}
+              <Card className="space-y-4">
+                <h2 className="text-sm font-semibold text-gray-700">Changer de forfait</h2>
+
+                <div className="space-y-3">
+                  {PLANS.map((p) => {
+                    const actif = p.id === planActuel
+                    const fonctionnalites: string[] =
+                      p.id === 'gratuit'
+                        ? ['1 pressing', '20 tickets / mois', 'Tableau de bord', 'Gestion clients']
+                        : p.id === 'pro'
+                        ? [
+                            '1 pressing',
+                            'Tickets illimités',
+                            'Gestion des agents',
+                            'Statistiques complètes',
+                            'Comptabilité SYSCOHADA',
+                            'Notifications WhatsApp',
+                            'PDF professionnel + logo',
+                          ]
+                        : [
+                            'Pressings illimités',
+                            'Tickets illimités',
+                            'Tout le plan Pro inclus',
+                            'Vue consolidée multi-pressings',
+                          ]
+                    return (
+                      <div
+                        key={p.id}
+                        className={`rounded-card border p-4 ${
+                          actif
+                            ? 'border-pressci-primary bg-pressci-light'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-800">
+                              {p.nom}{' '}
+                              {actif && (
+                                <span className="rounded-full bg-pressci-primary px-2 py-0.5 text-[10px] font-bold text-white">
+                                  ACTUEL
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-sm font-bold text-pressci-dark">
+                              {p.prix === 0 ? 'Gratuit' : `${formatFCFA(p.prix)} / mois`}
+                            </p>
+                          </div>
+                          {!actif && p.id !== 'gratuit' && (
+                            <button
+                              type="button"
+                              onClick={() => void passerAuPlan(p.id)}
+                              disabled={paiementEnCours !== null}
+                              className="rounded-full bg-pressci-primary px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                            >
+                              {paiementEnCours === p.id ? '…' : 'Souscrire'}
+                            </button>
                           )}
-                        </p>
-                        <p className="text-xs text-gray-500">{p.description}</p>
+                        </div>
+                        <ul className="space-y-1">
+                          {fonctionnalites.map((f) => (
+                            <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
+                              <span className="text-pressci-primary">✓</span>
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-pressci-dark">
-                          {p.prix === 0 ? 'Gratuit' : `${formatFCFA(p.prix)}/mois`}
-                        </p>
-                        {!actif && p.id !== 'gratuit' && (
-                          <button
-                            type="button"
-                            onClick={() => void passerAuPlan(p.id)}
-                            disabled={paiementEnCours !== null}
-                            className="mt-1 rounded-full bg-pressci-primary px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
-                          >
-                            {paiementEnCours === p.id ? '…' : 'Choisir'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              <p className="text-xs text-gray-400">
-                Paiement sécurisé par GeniusPay — mobile money accepté.
-              </p>
-            </Card>
+                    )
+                  })}
+                </div>
+
+                <p className="text-xs text-gray-400">
+                  Paiement sécurisé par GeniusPay — Wave, Orange Money, MTN, Moov acceptés.
+                  Résiliation possible à tout moment.
+                </p>
+              </Card>
+            </>
           )}
 
           <Button
