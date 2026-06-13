@@ -7,11 +7,17 @@ const ROUTES_PUBLIQUES = ['/login', '/register', '/landing']
  * Rafraîchit la session Supabase et protège les routes du dashboard.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
+  // Garde-fou : si les variables Supabase ne sont pas configurées (ex. preview
+  // Vercel sans env vars), on laisse passer sans planter le middleware.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
