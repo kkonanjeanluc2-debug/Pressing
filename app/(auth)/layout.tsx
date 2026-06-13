@@ -1,10 +1,12 @@
+import { BarChart3, CreditCard, MessageCircle, Ticket, Users } from 'lucide-react'
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const fonctionnalites = [
-    { icone: '🎫', texte: 'Tickets de dépôt numériques' },
-    { icone: '💰', texte: 'Caisse & encaissements' },
-    { icone: '👥', texte: 'Gestion des clients' },
-    { icone: '💬', texte: 'Notifications WhatsApp' },
-    { icone: '📊', texte: 'Rapports & statistiques' },
+    { Icone: Ticket,        texte: 'Tickets de dépôt numériques' },
+    { Icone: CreditCard,    texte: 'Caisse & encaissements' },
+    { Icone: Users,         texte: 'Gestion des clients' },
+    { Icone: MessageCircle, texte: 'Notifications WhatsApp' },
+    { Icone: BarChart3,     texte: 'Rapports & statistiques' },
   ]
 
   return (
@@ -43,12 +45,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </p>
 
           <div className="w-full max-w-xs space-y-2.5">
-            {fonctionnalites.map(({ icone, texte }) => (
+            {fonctionnalites.map(({ Icone, texte }) => (
               <div
                 key={texte}
                 className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-2.5 backdrop-blur-sm"
               >
-                <span className="text-xl">{icone}</span>
+                <Icone className="h-5 w-5 shrink-0 text-pressci-accent" />
                 <span className="text-sm font-medium text-pressci-light/90">{texte}</span>
               </div>
             ))}
