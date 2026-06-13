@@ -49,7 +49,7 @@ export async function GET(): Promise<NextResponse> {
       .from('tickets')
       .select('id', { count: 'exact', head: true })
       .gte('created_at', debutMois.toISOString()),
-    admin.from('encaissements').select('montant').gte('created_at', debutMois.toISOString()),
+    admin.from('abonnements').select('montant').gte('created_at', debutMois.toISOString()).not('montant', 'is', null),
     admin.from('abonnements').select('plan, owner_id').eq('statut', 'actif'),
     admin.from('abonnements').select('montant').not('montant', 'is', null),
     admin

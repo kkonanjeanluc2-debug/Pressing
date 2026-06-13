@@ -90,7 +90,7 @@ export default function AdminDashboardPage() {
       ),
     },
     {
-      label: 'Volume ce mois (FCFA)',
+      label: 'Abonnements ce mois (FCFA)',
       valeur: s.volume_mois.toLocaleString('fr-FR'),
       tinte: 'bg-violet-100 text-violet-600',
       icone: (
