@@ -24,6 +24,16 @@ export default function DashboardPage() {
     'pro' | 'reseau' | 'en_attente' | null
   >(null)
 
+  // Rediriger les partenaires vers leur espace dédié
+  useEffect(() => {
+    void fetch('/api/partenaire/profil').then(async (res) => {
+      if (res.ok) {
+        const data = (await res.json()) as { succes: boolean }
+        if (data.succes) router.replace('/partenaire')
+      }
+    })
+  }, [router])
+
   // Retour de paiement GeniusPay : afficher la confirmation d'abonnement.
   // Le webhook peut mettre quelques secondes : on revérifie plusieurs fois.
   useEffect(() => {

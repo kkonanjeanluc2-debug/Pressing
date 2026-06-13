@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const [ncc, setNcc] = useState('')
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
+  const [codeParrainage, setCodeParrainage] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
   const [confirmationRequise, setConfirmationRequise] = useState(false)
   const [chargement, setChargement] = useState(false)
@@ -78,6 +79,7 @@ export default function RegisterPage() {
         nom: nomTitulaire.trim(),
         rccm: rccm.trim() || null,
         ncc: ncc.trim() || null,
+        parraine_par: codeParrainage.trim().toLowerCase() || null,
       }),
       supabase.from('abonnements').insert({
         owner_id: authData.user.id,
@@ -112,9 +114,6 @@ export default function RegisterPage() {
   return (
     <main className="flex flex-col justify-center">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pressci-primary text-3xl font-bold text-white">
-          P
-        </div>
         <h1 className="text-2xl font-bold text-pressci-dark">Créer mon compte</h1>
         <p className="mt-1 text-gray-500">
           Gratuit — vous créerez votre pressing juste après
@@ -211,6 +210,18 @@ export default function RegisterPage() {
         {erreur && (
           <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>
         )}
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Code partenaire <span className="font-normal text-gray-400">(facultatif)</span>
+          </label>
+          <Input
+            name="code_parrainage"
+            placeholder="Ex : kouassi1234"
+            value={codeParrainage}
+            onChange={(e) => setCodeParrainage(e.target.value)}
+          />
+        </div>
 
         <Button type="submit" pleineLargeur chargement={chargement}>
           Créer mon compte
