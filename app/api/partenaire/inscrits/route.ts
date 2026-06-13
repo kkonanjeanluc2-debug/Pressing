@@ -43,11 +43,11 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ succes: false, erreur: 'Compte partenaire introuvable.' }, { status: 404 })
   }
 
-  // 2. Profils des utilisateurs parrainés
+  // 2. Profils des utilisateurs parrainés (comparaison insensible à la casse)
   const { data: profils } = await admin
     .from('profils')
     .select('user_id, nom, type_compte, created_at')
-    .eq('parraine_par', partenaire.code_parrainage)
+    .eq('parraine_par', (partenaire.code_parrainage as string).toLowerCase())
 
   const profils_ = profils ?? []
   const userIds = profils_.map((p) => p.user_id as string)
