@@ -1,69 +1,88 @@
-import { PRIX_PLANS, verifierSignatureWebhook, verifierTransaction } from '@/lib/geniuspay'
+import {
+  PRIX_PLANS,
+  timestampValide,
+  verifierSignatureWebhook,
+  verifierTransaction,
+} from '@/lib/geniuspay'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Plan } from '@/types'
 import { NextResponse, type NextRequest } from 'next/server'
 
-interface NotificationGeniusPay {
-  reference?: string
-  transaction_id?: string
-  status?: string
+interface PayloadWebhook {
+  event?: string
+  data?: {
+    reference?: string
+    status?: string
+    metadata?: Record<string, unknown>
+  }
 }
 
 /**
  * POST /api/geniuspay-webhook
- * Notification de paiement GeniusPay (callback_url).
+ * Webhook GeniusPay (événement payment.success).
  *
  * Sécurité :
- * 1. Vérification HMAC de la signature (header x-signature ou x-token)
- * 2. Re-vérification du statut de la transaction via l'API GeniusPay
- * 3. Idempotence : une transaction n'active jamais deux abonnements
+ * 1. Signature : HMAC-SHA256(timestamp + "." + payload, whsec_...)
+ *    via les headers X-Webhook-Signature / X-Webhook-Timestamp
+ * 2. Anti-rejeu : timestamp à moins de 5 minutes
+ * 3. Re-vérification de la transaction via l'API (status completed)
+ * 4. Idempotence : une référence n'active jamais deux abonnements
  *
- * reference attendue : "PRESSCI-{ownerId}-{plan}-{timestamp}"
+ * Le propriétaire et le plan sont lus dans metadata (owner_id, plan),
+ * tels qu'envoyés à la création du paiement.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const corpsBrut = await request.text()
-  const signature =
-    request.headers.get('x-signature') ??
-    request.headers.get('x-geniuspay-signature') ??
-    request.headers.get('x-token')
+  const signature = request.headers.get('x-webhook-signature')
+  const timestamp = request.headers.get('x-webhook-timestamp')
+  const evenementHeader = request.headers.get('x-webhook-event')
 
-  // 1. Signature HMAC
-  if (!verifierSignatureWebhook(corpsBrut, signature)) {
+  // 1. Signature + 2. anti-rejeu
+  if (!verifierSignatureWebhook(corpsBrut, signature, timestamp)) {
     return NextResponse.json({ erreur: 'Signature invalide' }, { status: 401 })
   }
+  if (!timestampValide(timestamp)) {
+    return NextResponse.json({ erreur: 'Timestamp expiré' }, { status: 400 })
+  }
 
-  // JSON ou x-www-form-urlencoded selon la configuration du compte
-  let notification: NotificationGeniusPay
+  let payload: PayloadWebhook
   try {
-    notification = JSON.parse(corpsBrut) as NotificationGeniusPay
+    payload = JSON.parse(corpsBrut) as PayloadWebhook
   } catch {
-    notification = Object.fromEntries(
-      new URLSearchParams(corpsBrut).entries()
-    ) as NotificationGeniusPay
+    return NextResponse.json({ erreur: 'Payload invalide' }, { status: 400 })
   }
 
-  const reference = notification.reference ?? notification.transaction_id
-  if (!reference || !reference.startsWith('PRESSCI-')) {
-    return NextResponse.json({ erreur: 'Transaction inconnue' }, { status: 400 })
+  // Seul payment.success déclenche une activation
+  const evenement = payload.event ?? evenementHeader
+  if (evenement !== 'payment.success') {
+    return NextResponse.json({ statut: `événement ${evenement ?? 'inconnu'} ignoré` })
   }
 
-  // Décodage : PRESSCI-{ownerId}-{plan}-{timestamp}
-  const correspondance = reference.match(/^PRESSCI-([0-9a-f-]{36})-(pro|reseau)-(\d+)$/)
-  if (!correspondance) {
-    return NextResponse.json({ erreur: 'Format de transaction invalide' }, { status: 400 })
+  const reference = payload.data?.reference
+  if (!reference) {
+    return NextResponse.json({ erreur: 'Référence manquante' }, { status: 400 })
   }
-  const ownerId = correspondance[1] as string
-  const plan = correspondance[2] as Exclude<Plan, 'gratuit'>
 
-  // 2. Re-vérification auprès de GeniusPay
-  const paiementConfirme = await verifierTransaction(reference)
-  if (!paiementConfirme) {
+  // 3. Re-vérification auprès de GeniusPay (statut + metadata de confiance)
+  const transaction = await verifierTransaction(reference)
+  if (!transaction.confirme) {
     return NextResponse.json({ statut: 'paiement non confirmé' }, { status: 200 })
+  }
+
+  const metadata =
+    Object.keys(transaction.metadata).length > 0
+      ? transaction.metadata
+      : payload.data?.metadata ?? {}
+  const ownerId = typeof metadata.owner_id === 'string' ? metadata.owner_id : null
+  const plan = metadata.plan === 'pro' || metadata.plan === 'reseau' ? (metadata.plan as Exclude<Plan, 'gratuit'>) : null
+
+  if (!ownerId || !/^[0-9a-f-]{36}$/.test(ownerId) || !plan) {
+    return NextResponse.json({ erreur: 'Metadata invalides' }, { status: 400 })
   }
 
   const supabase = createAdminClient()
 
-  // 3. Idempotence
+  // 4. Idempotence
   const { data: existant } = await supabase
     .from('abonnements')
     .select('id')

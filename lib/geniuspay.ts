@@ -1,47 +1,58 @@
-import { createHmac, timingSafeEqual } from 'crypto'
+import { telephoneInternational } from '@/lib/utils'
 import type { Plan } from '@/types'
+import { createHmac, timingSafeEqual } from 'crypto'
 
 /**
- * Intégration GeniusPay : paiement des abonnements (mobile money)
- * et vérification HMAC des webhooks.
+ * Intégration GeniusPay (https://geniuspay.ci/docs/api).
  *
- * L'URL de base et les chemins sont configurables : ajustez
- * GENIUSPAY_BASE_URL selon la documentation de votre compte marchand.
+ * - Authentification : headers X-API-Key (pk_...) + X-API-Secret (sk_...)
+ * - Création de paiement : POST /payments — sans payment_method,
+ *   GeniusPay retourne une page de checkout (Wave, Orange, MTN, Moov, carte)
+ * - La référence (MTX-...) est générée par GeniusPay : le compte et le
+ *   plan voyagent dans metadata et reviennent dans le webhook
+ * - Webhook : X-Webhook-Signature = HMAC-SHA256(timestamp + "." + payload)
+ *   avec le secret whsec_..., événement payment.success
  */
 
-const BASE_URL = process.env.GENIUSPAY_BASE_URL ?? 'https://api.geniuspay.ci/v1'
+const BASE_URL = process.env.GENIUSPAY_BASE_URL ?? 'https://geniuspay.ci/api/v1/merchant'
 
 export const PRIX_PLANS: Record<Exclude<Plan, 'gratuit'>, number> = {
   pro: 5000,
   reseau: 12000,
 }
 
+function entetes(): Record<string, string> | null {
+  const cle = process.env.GENIUSPAY_API_KEY
+  const secret = process.env.GENIUSPAY_API_SECRET
+  if (!cle || !secret) return null
+  return {
+    'X-API-Key': cle,
+    'X-API-Secret': secret,
+    'Content-Type': 'application/json',
+  }
+}
+
 export interface InitPaiementResult {
   succes: boolean
   url?: string
+  reference?: string
   erreur?: string
 }
 
-/** Cherche l'URL de paiement dans la réponse, quel que soit son format. */
-function extraireUrlPaiement(reponse: unknown): string | null {
-  if (typeof reponse !== 'object' || reponse === null) return null
-  const r = reponse as Record<string, unknown>
-  const candidats = [
-    r.payment_url,
-    r.checkout_url,
-    r.url,
-    (r.data as Record<string, unknown> | undefined)?.payment_url,
-    (r.data as Record<string, unknown> | undefined)?.checkout_url,
-    (r.data as Record<string, unknown> | undefined)?.url,
-  ]
-  const url = candidats.find((c) => typeof c === 'string' && c.startsWith('http'))
-  return (url as string) ?? null
+interface ReponseCreation {
+  success?: boolean
+  data?: {
+    reference?: string
+    checkout_url?: string
+    payment_url?: string
+  }
+  error?: { message?: string }
+  message?: string
 }
 
 /**
- * Initialise un paiement d'abonnement et retourne l'URL de paiement GeniusPay.
- * L'abonnement appartient au propriétaire/entreprise :
- * reference = "PRESSCI-{ownerId}-{plan}-{timestamp}"
+ * Initialise un paiement d'abonnement et retourne l'URL de checkout GeniusPay.
+ * Le propriétaire et le plan sont transmis en metadata (retournés au webhook).
  */
 export async function initierPaiement(
   ownerId: string,
@@ -49,66 +60,69 @@ export async function initierPaiement(
   clientNom: string,
   clientTelephone: string
 ): Promise<InitPaiementResult> {
-  const apiKey = process.env.GENIUSPAY_API_KEY
-  const merchantId = process.env.GENIUSPAY_MERCHANT_ID
+  const headers = entetes()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
-
-  if (!apiKey || !merchantId) {
+  if (!headers) {
     return { succes: false, erreur: 'Configuration GeniusPay manquante' }
   }
 
-  const reference = `PRESSCI-${ownerId}-${plan}-${Date.now()}`
-
   const res = await fetch(`${BASE_URL}/payments`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers,
     body: JSON.stringify({
-      merchant_id: merchantId,
-      reference,
-      transaction_id: reference,
       amount: PRIX_PLANS[plan],
       currency: 'XOF',
-      description: `Abonnement PressCI ${plan}`,
-      customer_name: clientNom,
-      customer_phone: clientTelephone,
-      callback_url: `${appUrl}/api/geniuspay-webhook`,
-      notify_url: `${appUrl}/api/geniuspay-webhook`,
-      return_url: `${appUrl}/parametres?paiement=retour`,
-      metadata: { owner_id: ownerId, plan },
+      // payment_method omis → page de checkout GeniusPay (tous les moyens)
+      description: `Abonnement PressCI ${plan === 'pro' ? 'Pro' : 'Réseau'}`,
+      customer: {
+        name: clientNom,
+        phone: telephoneInternational(clientTelephone),
+        country: 'CI',
+      },
+      success_url: `${appUrl}/parametres?paiement=succes`,
+      error_url: `${appUrl}/parametres?paiement=echec`,
+      metadata: {
+        owner_id: ownerId,
+        plan,
+        produit: 'abonnement_pressci',
+      },
     }),
   })
 
-  let corps: unknown = null
+  let corps: ReponseCreation = {}
   try {
-    corps = await res.json()
+    corps = (await res.json()) as ReponseCreation
   } catch {
     // réponse non JSON
   }
 
-  const url = extraireUrlPaiement(corps)
-  if (!res.ok || !url) {
-    const message =
-      (typeof corps === 'object' && corps !== null && 'message' in corps
-        ? String((corps as Record<string, unknown>).message)
-        : null) ?? `Échec initialisation paiement (${res.status})`
-    return { succes: false, erreur: message }
+  const url = corps.data?.checkout_url ?? corps.data?.payment_url
+  if (!res.ok || corps.success !== true || !url) {
+    return {
+      succes: false,
+      erreur:
+        corps.error?.message ?? corps.message ?? `Échec initialisation paiement (${res.status})`,
+    }
   }
 
-  return { succes: true, url }
+  return { succes: true, url, reference: corps.data?.reference }
 }
 
 /**
- * Vérifie la signature HMAC-SHA256 d'un webhook GeniusPay
- * (corps brut signé avec la clé secrète, signature en hexadécimal).
+ * Vérifie la signature d'un webhook GeniusPay :
+ * HMAC-SHA256(timestamp + "." + corps brut, secret whsec_...).
  */
-export function verifierSignatureWebhook(corpsBrut: string, signatureRecue: string | null): boolean {
+export function verifierSignatureWebhook(
+  corpsBrut: string,
+  signatureRecue: string | null,
+  timestamp: string | null
+): boolean {
   const secret = process.env.GENIUSPAY_WEBHOOK_SECRET
-  if (!secret || !signatureRecue) return false
+  if (!secret || !signatureRecue || !timestamp) return false
 
-  const attendu = createHmac('sha256', secret).update(corpsBrut).digest('hex')
+  const attendu = createHmac('sha256', secret)
+    .update(`${timestamp}.${corpsBrut}`)
+    .digest('hex')
 
   const a = Buffer.from(attendu)
   const b = Buffer.from(signatureRecue.toLowerCase())
@@ -116,28 +130,42 @@ export function verifierSignatureWebhook(corpsBrut: string, signatureRecue: stri
   return timingSafeEqual(a, b)
 }
 
+/** Protection contre le rejeu : timestamp à moins de 5 minutes. */
+export function timestampValide(timestamp: string | null): boolean {
+  if (!timestamp) return false
+  const ts = parseInt(timestamp, 10)
+  if (Number.isNaN(ts)) return false
+  return Math.abs(Date.now() / 1000 - ts) <= 300
+}
+
+export interface TransactionVerifiee {
+  confirme: boolean
+  metadata: Record<string, unknown>
+}
+
 /**
- * Re-vérifie le statut d'une transaction auprès de GeniusPay
- * (recommandé : ne jamais se fier au seul webhook).
+ * Re-vérifie une transaction auprès de GeniusPay :
+ * GET /payments/{reference} → status "completed" + metadata.
  */
-export async function verifierTransaction(reference: string): Promise<boolean> {
-  const apiKey = process.env.GENIUSPAY_API_KEY
-  if (!apiKey) return false
+export async function verifierTransaction(reference: string): Promise<TransactionVerifiee> {
+  const headers = entetes()
+  if (!headers) return { confirme: false, metadata: {} }
 
-  const res = await fetch(`${BASE_URL}/payments/${encodeURIComponent(reference)}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  })
-  if (!res.ok) return false
+  const res = await fetch(`${BASE_URL}/payments/${encodeURIComponent(reference)}`, { headers })
+  if (!res.ok) return { confirme: false, metadata: {} }
 
-  let corps: unknown = null
+  let corps: {
+    success?: boolean
+    data?: { status?: string; metadata?: Record<string, unknown> }
+  } = {}
   try {
-    corps = await res.json()
+    corps = (await res.json()) as typeof corps
   } catch {
-    return false
+    return { confirme: false, metadata: {} }
   }
-  const r = corps as Record<string, unknown>
-  const statut = String(
-    r.status ?? (r.data as Record<string, unknown> | undefined)?.status ?? ''
-  ).toUpperCase()
-  return ['SUCCESS', 'SUCCESSFUL', 'PAID', 'ACCEPTED', 'COMPLETED'].includes(statut)
+
+  return {
+    confirme: corps.success === true && corps.data?.status === 'completed',
+    metadata: corps.data?.metadata ?? {},
+  }
 }

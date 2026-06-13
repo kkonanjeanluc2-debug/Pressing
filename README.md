@@ -59,7 +59,7 @@ Puis renseignez :
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API (⚠️ secret) |
-| `GENIUSPAY_API_KEY` / `GENIUSPAY_MERCHANT_ID` / `GENIUSPAY_WEBHOOK_SECRET` | Tableau de bord GeniusPay |
+| `GENIUSPAY_API_KEY` (pk_…) / `GENIUSPAY_API_SECRET` (sk_…) / `GENIUSPAY_WEBHOOK_SECRET` (whsec_…) | GeniusPay → Paramètres → API |
 | `ORANGE_SMS_API_KEY` | Orange Developer (Basic auth base64 `client_id:client_secret`) |
 | `NEXT_PUBLIC_APP_URL` | URL publique de l'app (localhost en dev) |
 
@@ -83,7 +83,7 @@ tarifs par défaut) et active Realtime sur `tickets`.
 npx supabase functions deploy sms-notify
 npx supabase functions deploy geniuspay-webhook --no-verify-jwt
 npx supabase secrets set ORANGE_SMS_API_KEY=... ORANGE_SMS_SENDER=PressCI
-npx supabase secrets set GENIUSPAY_API_KEY=... GENIUSPAY_BASE_URL=... GENIUSPAY_WEBHOOK_SECRET=...
+npx supabase secrets set GENIUSPAY_API_KEY=pk_... GENIUSPAY_API_SECRET=sk_... GENIUSPAY_WEBHOOK_SECRET=whsec_...
 ```
 
 > Les routes Next.js `app/api/sms` et `app/api/geniuspay-webhook` couvrent les
