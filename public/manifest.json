@@ -1,7 +1,7 @@
 {
-  "name": "PressCI — Gestion de pressing",
-  "short_name": "PressCI",
-  "description": "Gérez votre pressing depuis votre téléphone : dépôts, clients, caisse, SMS.",
+  "name": "Pressing Ivoire",
+  "short_name": "Pressing Ivoire",
+  "description": "Gérez votre pressing depuis votre téléphone : dépôts, clients, caisse, notifications.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
