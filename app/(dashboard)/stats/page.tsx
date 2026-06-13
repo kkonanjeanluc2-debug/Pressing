@@ -163,7 +163,7 @@ export default function StatsPage() {
         tauxFidelisation: tous.length > 0 ? Math.round((fideles / tous.length) * 100) : 0,
       }
     },
-    ‘Impossible de charger les statistiques. Vérifiez votre réseau.’
+    'Impossible de charger les statistiques. Vérifiez votre réseau.'
   )
 
   const { planAutorise, chargement: chargementPlan } = usePlan(pressings[0]?.owner_id ?? null)
@@ -177,15 +177,15 @@ export default function StatsPage() {
   const pointsCA = useMemo((): PointCA[] => {
     const points = new Map<string, number>()
     const formatPoint = (d: Date): string => {
-      if (periode === ‘jour’ || periode === ‘personnalise’) {
-        return d.toLocaleDateString(‘fr-FR’, { day: ‘2-digit’, month: ‘2-digit’ })
+      if (periode === 'jour' || periode === 'personnalise') {
+        return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
       }
-      if (periode === ‘semaine’) {
+      if (periode === 'semaine') {
         const debutSem = new Date(d)
         debutSem.setDate(d.getDate() - ((d.getDay() + 6) % 7))
-        return debutSem.toLocaleDateString(‘fr-FR’, { day: ‘2-digit’, month: ‘2-digit’ })
+        return debutSem.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
       }
-      return d.toLocaleDateString(‘fr-FR’, { month: ‘short’ })
+      return d.toLocaleDateString('fr-FR', { month: 'short' })
     }
 
     const curseur = new Date(bornes.debut)
@@ -205,17 +205,17 @@ export default function StatsPage() {
   const totalPeriode = encaissements.reduce((s, e) => s + e.montant, 0)
 
   // Early returns après tous les hooks
-  if (!chargementPlan && !planAutorise(‘pro’)) {
+  if (!chargementPlan && !planAutorise('pro')) {
     return <BlocagePlan planRequis="pro" fonctionnalite="Les statistiques avancées" />
   }
 
-  if (!chargementProfil && !peut(‘voir_stats’)) {
+  if (!chargementProfil && !peut('voir_stats')) {
     return (
       <div className="px-4 py-16 text-center text-gray-600">
         <p className="mb-2 text-4xl">🔒</p>
         <p className="font-semibold">Accès non autorisé.</p>
         <p className="mt-1 text-sm">
-          Le propriétaire ne vous a pas donné l’accès aux rapports.
+          Le propriétaire ne vous a pas donné l'accès aux rapports.
         </p>
       </div>
     )
@@ -300,7 +300,7 @@ export default function StatsPage() {
         <>
           <div className="space-y-4 lg:grid lg:grid-cols-3 lg:gap-4 lg:space-y-0">
             <Card className="flex flex-col justify-center text-center">
-              <p className="text-sm text-gray-500">Chiffre d’affaires de la période</p>
+              <p className="text-sm text-gray-500">Chiffre d'affaires de la période</p>
               <p className="text-2xl font-bold text-pressci-dark">{formatFCFA(totalPeriode)}</p>
             </Card>
 
