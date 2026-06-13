@@ -48,6 +48,10 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const pathname = request.nextUrl.pathname
   const estRoutePublique = ROUTES_PUBLIQUES.some((r) => pathname.startsWith(r))
   const estRouteApi = pathname.startsWith('/api')
+  const estRoutePartenaire = pathname.startsWith('/partenaire')
+
+  // Détecter un compte partenaire via les métadonnées (sans requête DB)
+  const estPartenaire = user?.user_metadata?.role === 'partenaire'
 
   // Non connecté → redirection vers /login (sauf routes publiques et API)
   if (!user && !estRoutePublique && !estRouteApi) {
@@ -56,8 +60,31 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return NextResponse.redirect(url)
   }
 
-  // Déjà connecté → pas d'accès aux pages login/register
+  if (user && estPartenaire) {
+    // Partenaire sur page publique (login/register) → espace partenaire
+    if (estRoutePublique) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/partenaire'
+      return NextResponse.redirect(url)
+    }
+    // Partenaire sur une route non-partenaire et non-API → espace partenaire
+    if (!estRoutePartenaire && !estRouteApi) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/partenaire'
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
+
+  // Utilisateur ordinaire connecté → pas d'accès aux pages login/register
   if (user && estRoutePublique) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    return NextResponse.redirect(url)
+  }
+
+  // Utilisateur ordinaire connecté → pas d'accès à l'espace partenaire
+  if (user && estRoutePartenaire) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
