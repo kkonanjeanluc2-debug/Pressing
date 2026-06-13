@@ -74,12 +74,6 @@ export default function ComptabilitePage() {
   const { pressings } = usePressing()
   const { role, peut, chargement: chargementProfil } = useProfil()
   const { proprietaire } = useProfilProprietaire(pressings[0]?.owner_id ?? null)
-  const { planAutorise, chargement: chargementPlan } = usePlan(pressings[0]?.owner_id ?? null)
-
-  if (!chargementPlan && !planAutorise('pro')) {
-    return <BlocagePlan planRequis="pro" fonctionnalite="La comptabilité" />
-  }
-
   const [onglet, setOnglet] = useState<Onglet>('journal')
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
   const [dateDebut, setDateDebut] = useState(debutDuMois())
@@ -129,6 +123,12 @@ export default function ComptabilitePage() {
     },
     'Impossible de charger la comptabilité. Vérifiez votre réseau.'
   )
+
+  const { planAutorise, chargement: chargementPlan } = usePlan(pressings[0]?.owner_id ?? null)
+
+  if (!chargementPlan && !planAutorise('pro')) {
+    return <BlocagePlan planRequis="pro" fonctionnalite="La comptabilité" />
+  }
 
   // ---- Garde d'accès : propriétaire, ou agent avec la permission ----
   if (!chargementProfil && role === 'agent' && !peut('gerer_depenses')) {

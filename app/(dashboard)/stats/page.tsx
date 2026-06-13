@@ -58,11 +58,6 @@ const PERIODES: Array<{ id: Periode; label: string }> = [
 export default function StatsPage() {
   const { pressings } = usePressing()
   const { peut, chargement: chargementProfil } = useProfil()
-  const { planAutorise, chargement: chargementPlan } = usePlan(pressings[0]?.owner_id ?? null)
-
-  if (!chargementPlan && !planAutorise('pro')) {
-    return <BlocagePlan planRequis="pro" fonctionnalite="Les statistiques avancées" />
-  }
   const [periode, setPeriode] = useState<Periode>('semaine')
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
 
@@ -170,6 +165,12 @@ export default function StatsPage() {
     },
     'Impossible de charger les statistiques. Vérifiez votre réseau.'
   )
+
+  const { planAutorise, chargement: chargementPlan } = usePlan(pressings[0]?.owner_id ?? null)
+
+  if (!chargementPlan && !planAutorise('pro')) {
+    return <BlocagePlan planRequis="pro" fonctionnalite="Les statistiques avancées" />
+  }
 
   if (!chargementProfil && !peut('voir_stats')) {
     return (
