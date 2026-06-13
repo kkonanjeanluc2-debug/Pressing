@@ -13,7 +13,15 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ succes: false, erreur: 'Accès réservé' }, { status: 403 })
   }
 
-  const admin = createAdminClient()
+  let admin: ReturnType<typeof createAdminClient>
+  try {
+    admin = createAdminClient()
+  } catch (e) {
+    return NextResponse.json(
+      { succes: false, erreur: (e as Error).message },
+      { status: 500 }
+    )
+  }
   const debutMois = new Date()
   debutMois.setDate(1)
   debutMois.setHours(0, 0, 0, 0)

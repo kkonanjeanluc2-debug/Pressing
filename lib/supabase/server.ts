@@ -38,9 +38,12 @@ export function createClient(): SupabaseClient {
  * ⚠️ Ne jamais exposer côté client : bypass RLS.
  */
 export function createAdminClient(): SupabaseClient {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-    process.env.SUPABASE_SERVICE_ROLE_KEY as string,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY manquante dans les variables Vercel.')
+  }
+  return createSupabaseClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
 }

@@ -10,7 +10,15 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ succes: false, erreur: 'Accès réservé' }, { status: 403 })
   }
 
-  const admin = createAdminClient()
+  let admin: ReturnType<typeof createAdminClient>
+  try {
+    admin = createAdminClient()
+  } catch (e) {
+    return NextResponse.json(
+      { succes: false, erreur: (e as Error).message },
+      { status: 500 }
+    )
+  }
   const [profils, pressings, abonnements, comptes] = await Promise.all([
     admin.from('profils').select('*').order('created_at', { ascending: false }),
     admin.from('pressings').select('owner_id'),
