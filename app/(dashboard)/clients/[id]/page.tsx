@@ -11,36 +11,20 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
-  const { pressing } = usePressing()
+  const { pressings } = usePressing()
   const { peut } = useProfil()
   const { client, tickets, chargement, erreur } = useClient(params.id)
-  const [envoiSms, setEnvoiSms] = useState(false)
-  const [messageSms, setMessageSms] = useState<string | null>(null)
-  const [messageWhatsApp, setMessageWhatsApp] = useState<string | null>(null)
+  const [messageOk, setMessageOk] = useState<string | null>(null)
 
-  async function relancerCreance() {
-    if (!client || !pressing) return
-    setEnvoiSms(true)
-    setMessageSms(null)
-    setMessageWhatsApp(null)
-
+  /** Relance de créance : ouvre le WhatsApp du client avec le message. */
+  function relancerCreance() {
+    if (!client) return
+    const pressing = pressings.find((p) => p.id === client.pressing_id) ?? pressings[0]
+    if (!pressing) return
     const texte = messageSmsRelance(client.nom, pressing.nom, client.solde_creance)
-    try {
-      const res = await fetch('/api/sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: client.id, message: texte }),
-      })
-      const data = (await res.json()) as { succes: boolean }
-      if (data.succes) {
-        setMessageSms('SMS de relance envoyé ✅')
-      } else {
-        setMessageWhatsApp(texte)
-      }
-    } catch {
-      setMessageWhatsApp(texte)
-    }
-    setEnvoiSms(false)
+    const tel = client.telephone.replace(/\D/g, '').replace(/^225/, '')
+    window.open(`https://wa.me/225${tel}?text=${encodeURIComponent(texte)}`, '_blank')
+    setMessageOk('Discussion WhatsApp ouverte avec le message de relance — appuyez sur Envoyer. ✅')
   }
 
   if (chargement) {
@@ -112,36 +96,17 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       </Card>
 
       {client.solde_creance > 0 && peut('envoyer_sms') && (
-        <Button
-          pleineLargeur
-          variante="secondary"
-          chargement={envoiSms}
-          onClick={() => void relancerCreance()}
+        <button
+          type="button"
+          onClick={relancerCreance}
+          className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-card bg-[#25D366] px-4 py-3 text-base font-semibold text-white active:brightness-90"
         >
-          📱 Relancer par SMS ({formatFCFA(client.solde_creance)})
-        </Button>
+          💬 Relancer sur WhatsApp ({formatFCFA(client.solde_creance)})
+        </button>
       )}
 
-      {messageSms && (
-        <p className="rounded-card bg-green-50 px-3 py-2 text-sm text-green-700">{messageSms}</p>
-      )}
-
-      {messageWhatsApp && (
-        <Card className="space-y-2">
-          <p className="text-sm text-red-700">
-            Le SMS n’est pas parti. Envoyez le message par WhatsApp :
-          </p>
-          <p className="rounded-card bg-gray-50 px-3 py-2 text-sm text-gray-700">{messageWhatsApp}</p>
-          <a
-            href={`https://wa.me/225${client.telephone.replace(/\D/g, '')}?text=${encodeURIComponent(messageWhatsApp)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button variante="secondary" pleineLargeur>
-              Ouvrir WhatsApp
-            </Button>
-          </a>
-        </Card>
+      {messageOk && (
+        <p className="rounded-card bg-green-50 px-3 py-2 text-sm text-green-700">{messageOk}</p>
       )}
 
       <section>
