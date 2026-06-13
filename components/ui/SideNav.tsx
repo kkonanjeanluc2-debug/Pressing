@@ -172,20 +172,21 @@ export default function SideNav() {
       )}
     >
       {/* Logo */}
-      <div className={cn('flex items-center gap-3 border-b border-white/10 py-5', reduite ? 'justify-center px-2' : 'px-5')}>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pressci-primary text-xl font-bold text-white">
-          P
+      <div className={cn('flex items-center gap-3 border-b border-white/10 py-3', reduite ? 'justify-center px-2' : 'px-3')}>
+        <div className={cn('shrink-0 overflow-hidden rounded-xl', reduite ? 'h-12 w-12' : 'h-14 w-14')}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Pressing Ivoire" className="h-full w-full object-contain" />
         </div>
         {!reduite && (
-          <div>
-            <p className="text-lg font-bold text-white">PressCI</p>
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold leading-tight text-white">Pressing Ivoire</p>
             <p className="text-xs text-pressci-light/60">Gestion de pressing</p>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {liens.map((lien) => {
           const actif = lien.actif(pathname)
           return (
@@ -194,18 +195,36 @@ export default function SideNav() {
               href={lien.href}
               title={lien.label}
               className={cn(
-                'relative flex items-center gap-3 rounded-card px-3 py-2.5 text-sm font-medium transition-colors',
+                'group relative flex items-center gap-3 rounded-card px-3 py-2.5 text-sm font-medium',
+                'transition-all duration-200 ease-out',
+                'active:scale-[0.97]',
                 reduite && 'justify-center px-0',
                 actif
-                  ? 'bg-pressci-primary text-white'
-                  : 'text-pressci-light/80 hover:bg-white/10 hover:text-white'
+                  ? 'bg-pressci-primary text-white shadow-md shadow-pressci-primary/30'
+                  : 'text-pressci-light/70 hover:translate-x-1 hover:bg-white/10 hover:text-white'
               )}
             >
-              {actif && (
-                <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r bg-pressci-accent" />
+              {/* Barre d'accent gauche — glisse depuis la gauche sur les actifs */}
+              <span
+                className={cn(
+                  'absolute left-0 top-1/2 -translate-y-1/2 rounded-r bg-pressci-accent transition-all duration-300',
+                  actif ? 'h-6 w-1 opacity-100' : 'h-0 w-1 opacity-0 group-hover:h-4 group-hover:opacity-60'
+                )}
+              />
+
+              {/* Icône avec mise à l'échelle au survol */}
+              <span className={cn(
+                'shrink-0 transition-transform duration-200',
+                actif ? 'scale-110' : 'group-hover:scale-110'
+              )}>
+                {lien.icone}
+              </span>
+
+              {!reduite && (
+                <span className="transition-all duration-200 group-hover:tracking-wide">
+                  {lien.label}
+                </span>
               )}
-              {lien.icone}
-              {!reduite && lien.label}
             </Link>
           )
         })}
@@ -216,17 +235,22 @@ export default function SideNav() {
             href="/admin"
             title="Administration"
             className={cn(
-              'relative mt-2 flex items-center gap-3 rounded-card border border-pressci-accent/30 px-3 py-2.5 text-sm font-medium transition-colors',
+              'group relative mt-2 flex items-center gap-3 rounded-card border border-pressci-accent/30 px-3 py-2.5 text-sm font-medium',
+              'transition-all duration-200 ease-out active:scale-[0.97]',
               reduite && 'justify-center px-0',
               pathname.startsWith('/admin')
-                ? 'bg-pressci-primary text-white'
-                : 'text-pressci-accent hover:bg-white/10'
+                ? 'bg-pressci-primary text-white shadow-md shadow-pressci-primary/30'
+                : 'text-pressci-accent hover:translate-x-1 hover:bg-white/10'
             )}
           >
-            <svg className={ICONE} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            {!reduite && 'Admin'}
+            <span className="shrink-0 transition-transform duration-200 group-hover:scale-110">
+              <svg className={ICONE} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </span>
+            {!reduite && (
+              <span className="transition-all duration-200 group-hover:tracking-wide">Admin</span>
+            )}
           </Link>
         )}
       </nav>
