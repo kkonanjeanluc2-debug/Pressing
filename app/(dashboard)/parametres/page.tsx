@@ -504,7 +504,7 @@ export default function ParametresPage() {
                 })}
               </div>
               <p className="text-xs text-gray-400">
-                Paiement sécurisé par CinetPay — Wave et Orange Money acceptés.
+                Paiement sécurisé par GeniusPay — mobile money accepté.
               </p>
             </Card>
           )}

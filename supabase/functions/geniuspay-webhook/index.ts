@@ -1,9 +1,9 @@
-// Edge Function Supabase : webhook de paiement CinetPay.
-// Alternative serverless à app/api/cinetpay-webhook (utiliser l'une OU l'autre
-// comme notify_url).
-// Déploiement : npx supabase functions deploy cinetpay-webhook --no-verify-jwt
+// Edge Function Supabase : webhook de paiement GeniusPay.
+// Alternative serverless à app/api/geniuspay-webhook (utiliser l'une OU
+// l'autre comme callback_url).
+// Déploiement : npx supabase functions deploy geniuspay-webhook --no-verify-jwt
 // Secrets requis :
-//   npx supabase secrets set CINETPAY_API_KEY=... CINETPAY_SITE_ID=... CINETPAY_WEBHOOK_SECRET=...
+//   npx supabase secrets set GENIUSPAY_API_KEY=... GENIUSPAY_BASE_URL=... GENIUSPAY_WEBHOOK_SECRET=...
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -12,9 +12,11 @@ const PRIX_PLANS: Record<'pro' | 'reseau', number> = {
   reseau: 12000,
 }
 
-async function verifierHmac(corpsBrut: string, tokenRecu: string | null): Promise<boolean> {
-  const secret = Deno.env.get('CINETPAY_WEBHOOK_SECRET')
-  if (!secret || !tokenRecu) return false
+const BASE_URL = Deno.env.get('GENIUSPAY_BASE_URL') ?? 'https://api.geniuspay.ci/v1'
+
+async function verifierHmac(corpsBrut: string, signatureRecue: string | null): Promise<boolean> {
+  const secret = Deno.env.get('GENIUSPAY_WEBHOOK_SECRET')
+  if (!secret || !signatureRecue) return false
 
   const cle = await crypto.subtle.importKey(
     'raw',
@@ -28,28 +30,26 @@ async function verifierHmac(corpsBrut: string, tokenRecu: string | null): Promis
     .map((o) => o.toString(16).padStart(2, '0'))
     .join('')
 
-  if (attendu.length !== tokenRecu.length) return false
-  // Comparaison à temps constant
+  const recue = signatureRecue.toLowerCase()
+  if (attendu.length !== recue.length) return false
   let diff = 0
   for (let i = 0; i < attendu.length; i++) {
-    diff |= attendu.charCodeAt(i) ^ tokenRecu.charCodeAt(i)
+    diff |= attendu.charCodeAt(i) ^ recue.charCodeAt(i)
   }
   return diff === 0
 }
 
-async function verifierTransaction(transactionId: string): Promise<boolean> {
-  const apiKey = Deno.env.get('CINETPAY_API_KEY')
-  const siteId = Deno.env.get('CINETPAY_SITE_ID')
-  if (!apiKey || !siteId) return false
+async function verifierTransaction(reference: string): Promise<boolean> {
+  const apiKey = Deno.env.get('GENIUSPAY_API_KEY')
+  if (!apiKey) return false
 
-  const res = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apikey: apiKey, site_id: siteId, transaction_id: transactionId }),
+  const res = await fetch(`${BASE_URL}/payments/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
   })
   if (!res.ok) return false
-  const data = (await res.json()) as { code: string; data?: { status: string } }
-  return data.code === '00' && data.data?.status === 'ACCEPTED'
+  const corps = (await res.json()) as { status?: string; data?: { status?: string } }
+  const statut = String(corps.status ?? corps.data?.status ?? '').toUpperCase()
+  return ['SUCCESS', 'SUCCESSFUL', 'PAID', 'ACCEPTED', 'COMPLETED'].includes(statut)
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -58,28 +58,32 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   const corpsBrut = await req.text()
-  const token = req.headers.get('x-token')
+  const signature =
+    req.headers.get('x-signature') ??
+    req.headers.get('x-geniuspay-signature') ??
+    req.headers.get('x-token')
 
-  if (!(await verifierHmac(corpsBrut, token))) {
+  if (!(await verifierHmac(corpsBrut, signature))) {
     return Response.json({ erreur: 'Signature invalide' }, { status: 401 })
   }
 
-  let transactionId: string | undefined
+  let reference: string | undefined
   try {
-    const json = JSON.parse(corpsBrut) as { cpm_trans_id?: string }
-    transactionId = json.cpm_trans_id
+    const json = JSON.parse(corpsBrut) as { reference?: string; transaction_id?: string }
+    reference = json.reference ?? json.transaction_id
   } catch {
-    transactionId = new URLSearchParams(corpsBrut).get('cpm_trans_id') ?? undefined
+    const params = new URLSearchParams(corpsBrut)
+    reference = params.get('reference') ?? params.get('transaction_id') ?? undefined
   }
 
-  const correspondance = transactionId?.match(/^PRESSCI-([0-9a-f-]{36})-(pro|reseau)-(\d+)$/)
-  if (!transactionId || !correspondance) {
+  const correspondance = reference?.match(/^PRESSCI-([0-9a-f-]{36})-(pro|reseau)-(\d+)$/)
+  if (!reference || !correspondance) {
     return Response.json({ erreur: 'Transaction inconnue' }, { status: 400 })
   }
   const ownerId = correspondance[1]
   const plan = correspondance[2] as 'pro' | 'reseau'
 
-  if (!(await verifierTransaction(transactionId))) {
+  if (!(await verifierTransaction(reference))) {
     return Response.json({ statut: 'paiement non confirmé' }, { status: 200 })
   }
 
@@ -92,7 +96,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const { data: existant } = await supabase
     .from('abonnements')
     .select('id')
-    .eq('cinetpay_transaction_id', transactionId)
+    .eq('transaction_id', reference)
     .maybeSingle()
   if (existant) {
     return Response.json({ statut: 'déjà traité' })
@@ -112,7 +116,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     plan,
     statut: 'actif',
     date_fin: dateFin.toISOString(),
-    cinetpay_transaction_id: transactionId,
+    transaction_id: reference,
     montant: PRIX_PLANS[plan],
   })
 

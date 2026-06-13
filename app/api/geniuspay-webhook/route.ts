@@ -1,72 +1,73 @@
-import { verifierSignatureWebhook, verifierTransaction, PRIX_PLANS } from '@/lib/cinetpay'
+import { PRIX_PLANS, verifierSignatureWebhook, verifierTransaction } from '@/lib/geniuspay'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Plan } from '@/types'
 import { NextResponse, type NextRequest } from 'next/server'
 
-interface NotificationCinetPay {
-  cpm_trans_id?: string
-  cpm_site_id?: string
-  cpm_amount?: string
-  cpm_trans_status?: string
+interface NotificationGeniusPay {
+  reference?: string
+  transaction_id?: string
+  status?: string
 }
 
 /**
- * POST /api/cinetpay-webhook
- * Notification de paiement CinetPay (notify_url).
+ * POST /api/geniuspay-webhook
+ * Notification de paiement GeniusPay (callback_url).
  *
  * Sécurité :
- * 1. Vérification HMAC du header x-token
- * 2. Re-vérification du statut de la transaction via l'API CinetPay
+ * 1. Vérification HMAC de la signature (header x-signature ou x-token)
+ * 2. Re-vérification du statut de la transaction via l'API GeniusPay
+ * 3. Idempotence : une transaction n'active jamais deux abonnements
  *
- * transaction_id attendu : "PRESSCI-{pressingId}-{plan}-{timestamp}"
+ * reference attendue : "PRESSCI-{ownerId}-{plan}-{timestamp}"
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const corpsBrut = await request.text()
-  const token = request.headers.get('x-token')
+  const signature =
+    request.headers.get('x-signature') ??
+    request.headers.get('x-geniuspay-signature') ??
+    request.headers.get('x-token')
 
   // 1. Signature HMAC
-  if (!verifierSignatureWebhook(corpsBrut, token)) {
+  if (!verifierSignatureWebhook(corpsBrut, signature)) {
     return NextResponse.json({ erreur: 'Signature invalide' }, { status: 401 })
   }
 
-  // CinetPay envoie du x-www-form-urlencoded ou du JSON selon la config
-  let notification: NotificationCinetPay
+  // JSON ou x-www-form-urlencoded selon la configuration du compte
+  let notification: NotificationGeniusPay
   try {
-    notification = JSON.parse(corpsBrut) as NotificationCinetPay
+    notification = JSON.parse(corpsBrut) as NotificationGeniusPay
   } catch {
     notification = Object.fromEntries(
       new URLSearchParams(corpsBrut).entries()
-    ) as NotificationCinetPay
+    ) as NotificationGeniusPay
   }
 
-  const transactionId = notification.cpm_trans_id
-  if (!transactionId || !transactionId.startsWith('PRESSCI-')) {
+  const reference = notification.reference ?? notification.transaction_id
+  if (!reference || !reference.startsWith('PRESSCI-')) {
     return NextResponse.json({ erreur: 'Transaction inconnue' }, { status: 400 })
   }
 
   // Décodage : PRESSCI-{ownerId}-{plan}-{timestamp}
-  const correspondance = transactionId.match(
-    /^PRESSCI-([0-9a-f-]{36})-(pro|reseau)-(\d+)$/
-  )
+  const correspondance = reference.match(/^PRESSCI-([0-9a-f-]{36})-(pro|reseau)-(\d+)$/)
   if (!correspondance) {
     return NextResponse.json({ erreur: 'Format de transaction invalide' }, { status: 400 })
   }
   const ownerId = correspondance[1] as string
   const plan = correspondance[2] as Exclude<Plan, 'gratuit'>
 
-  // 2. Re-vérification auprès de CinetPay (jamais se fier au seul webhook)
-  const paiementConfirme = await verifierTransaction(transactionId)
+  // 2. Re-vérification auprès de GeniusPay
+  const paiementConfirme = await verifierTransaction(reference)
   if (!paiementConfirme) {
     return NextResponse.json({ statut: 'paiement non confirmé' }, { status: 200 })
   }
 
   const supabase = createAdminClient()
 
-  // Idempotence : ne pas traiter deux fois la même transaction
+  // 3. Idempotence
   const { data: existant } = await supabase
     .from('abonnements')
     .select('id')
-    .eq('cinetpay_transaction_id', transactionId)
+    .eq('transaction_id', reference)
     .maybeSingle()
   if (existant) {
     return NextResponse.json({ statut: 'déjà traité' }, { status: 200 })
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     plan,
     statut: 'actif',
     date_fin: dateFin.toISOString(),
-    cinetpay_transaction_id: transactionId,
+    transaction_id: reference,
     montant: PRIX_PLANS[plan],
   })
 

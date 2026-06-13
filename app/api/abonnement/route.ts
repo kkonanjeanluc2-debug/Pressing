@@ -1,4 +1,4 @@
-import { initierPaiement } from '@/lib/cinetpay'
+import { initierPaiement } from '@/lib/geniuspay'
 import { createClient } from '@/lib/supabase/server'
 import type { Plan } from '@/types'
 import { NextResponse, type NextRequest } from 'next/server'

@@ -84,7 +84,8 @@ export interface Abonnement {
   statut: StatutAbonnement
   date_debut: string
   date_fin: string | null
-  cinetpay_transaction_id: string | null
+  /** Référence de paiement GeniusPay */
+  transaction_id: string | null
   montant: number | null
   created_at: string
 }
