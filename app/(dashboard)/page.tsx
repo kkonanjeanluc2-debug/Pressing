@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [retourPaiement, setRetourPaiement] = useState<
     'pro' | 'reseau' | 'en_attente' | null
   >(null)
+  const [paiementEnCours, setPaiementEnCours] = useState(false)
 
   // Retour de paiement GeniusPay : afficher la confirmation d'abonnement.
   // Le webhook peut mettre quelques secondes : on revérifie plusieurs fois.
@@ -67,6 +68,25 @@ export default function DashboardPage() {
   const { pressing, pressings, chargement: chargementPressing, recharger } = usePressing()
   const { role, agent, peut } = useProfil()
   const { plan, planAutorise } = usePlan(pressings[0]?.owner_id ?? null)
+
+  async function passerAuPro() {
+    setPaiementEnCours(true)
+    try {
+      const res = await fetch('/api/abonnement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: 'pro' }),
+      })
+      const data = (await res.json()) as { succes: boolean; url?: string }
+      if (data.succes && data.url) {
+        window.location.href = data.url
+        return
+      }
+    } catch {
+      // silencieux — l'utilisateur peut aller dans parametres
+    }
+    setPaiementEnCours(false)
+  }
 
   async function seDeconnecterAgent() {
     const supabase = createClient()
@@ -127,12 +147,14 @@ export default function DashboardPage() {
               <span className="ml-2 text-amber-600">· 20 tickets/mois · 1 pressing</span>
             </div>
           </div>
-          <Link
-            href="/parametres"
-            className="shrink-0 rounded-full bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
+          <button
+            type="button"
+            onClick={() => void passerAuPro()}
+            disabled={paiementEnCours}
+            className="shrink-0 rounded-full bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-60"
           >
-            Passer au Pro
-          </Link>
+            {paiementEnCours ? '…' : 'Passer au Pro'}
+          </button>
         </div>
       )}
 
