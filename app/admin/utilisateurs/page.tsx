@@ -25,6 +25,7 @@ const DUREES_RAPIDES = [
   { label: '30 jours', jours: 30 },
   { label: '3 mois', jours: 90 },
   { label: '1 an', jours: 365 },
+  { label: 'À vie', jours: 36500 },
 ]
 
 export default function AdminUtilisateursPage() {
@@ -266,7 +267,7 @@ export default function AdminUtilisateursPage() {
 
             {/* Durée */}
             <p className="mb-2 text-sm font-medium text-gray-700">Durée</p>
-            <div className="mb-3 grid grid-cols-4 gap-2">
+            <div className="mb-3 grid grid-cols-5 gap-2">
               {DUREES_RAPIDES.map((d) => (
                 <button
                   key={d.jours}
@@ -274,7 +275,9 @@ export default function AdminUtilisateursPage() {
                   onClick={() => setJours(d.jours)}
                   className={`rounded-lg border px-2 py-2 text-xs font-semibold transition-all ${
                     jours === d.jours
-                      ? 'border-pressci-primary bg-pressci-light text-pressci-primary'
+                      ? d.jours === 36500
+                        ? 'border-amber-400 bg-amber-50 text-amber-700'
+                        : 'border-pressci-primary bg-pressci-light text-pressci-primary'
                       : 'border-gray-200 text-gray-500 hover:border-pressci-primary'
                   }`}
                 >
@@ -286,19 +289,20 @@ export default function AdminUtilisateursPage() {
               <input
                 type="number"
                 min={1}
-                max={3650}
+                max={36500}
                 value={jours}
                 onChange={(e) => setJours(Math.max(1, parseInt(e.target.value, 10) || 1))}
                 className="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-pressci-primary"
               />
               <span className="text-sm text-gray-500">jours</span>
               <span className="text-xs text-gray-400">
-                — expire le{' '}
-                {new Date(Date.now() + jours * 86400_000).toLocaleDateString('fr-FR', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })}
+                {jours >= 36500
+                  ? '— accès à vie ♾️'
+                  : `— expire le ${new Date(Date.now() + jours * 86400_000).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}`}
               </span>
             </div>
 
