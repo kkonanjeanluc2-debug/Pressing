@@ -74,11 +74,9 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   }
 
   /**
-   * Envoie le ticket en PDF sur WhatsApp.
-   * - Téléphone : partage natif → le PDF est JOINT directement dans WhatsApp
-   *   (choisir WhatsApp puis le client dans la feuille de partage).
-   * - Ordinateur : le PDF est téléchargé et la discussion WhatsApp du client
-   *   s'ouvre — il reste à le joindre (icône trombone).
+   * Envoie le récapitulatif du ticket sur WhatsApp.
+   * - Mobile : ouvre directement la discussion WhatsApp du client (comme la relance créance).
+   * - Ordinateur : télécharge le PDF et ouvre la discussion — il reste à joindre le fichier.
    */
   async function envoyerWhatsAppPdf() {
     if (!ticket.client) return
@@ -86,29 +84,18 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
     setInfo(null)
     setEnvoiWhatsApp(true)
 
-    const doc = genererTicketPdf(ticket, pressing, proprietaire)
-    const nomFichier = `ticket-${ticket.numero.replace('#', '')}.pdf`
-    const fichier = new File([doc.output('blob')], nomFichier, { type: 'application/pdf' })
-
-    // Téléphone UNIQUEMENT : le PDF part en pièce jointe via le partage natif.
-    // (Windows propose aussi une fenêtre de partage, inutile pour WhatsApp Web :
-    // sur ordinateur on passe par le guide téléchargement + discussion.)
     const estMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-    if (
-      estMobile &&
-      typeof navigator.canShare === 'function' &&
-      navigator.canShare({ files: [fichier] })
-    ) {
-      try {
-        await navigator.share({ files: [fichier], text: messageWhatsAppTicket })
-      } catch {
-        // Partage annulé par l'utilisateur : rien à faire
-      }
+
+    if (estMobile) {
+      // Mobile : ouvrir la discussion WhatsApp directement (même comportement que la relance créance)
+      window.open(lienDiscussionClient, '_blank')
       setEnvoiWhatsApp(false)
       return
     }
 
     // Ordinateur : téléchargement du PDF puis guide pas-à-pas
+    const doc = genererTicketPdf(ticket, pressing, proprietaire)
+    const nomFichier = `ticket-${ticket.numero.replace('#', '')}.pdf`
     doc.save(nomFichier)
     setGuideWhatsApp(true)
     setEnvoiWhatsApp(false)
@@ -336,8 +323,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         )}
       </div>
       <p className="-mt-2 text-center text-xs text-gray-400">
-        WhatsApp : la discussion du client s’ouvre automatiquement, même s’il n’est pas dans
-        vos contacts.
+        Mobile : ouvre directement la discussion WhatsApp. Ordinateur : télécharge le PDF puis ouvre WhatsApp.
       </p>
 
       {erreur && (
