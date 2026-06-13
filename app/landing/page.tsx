@@ -1,7 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import {
+  BarChart3,
+  BookOpen,
+  MessageCircle,
+  ShieldCheck,
+  Smartphone,
+  Tag,
+  Ticket,
+  Users,
+} from 'lucide-react'
+import React, { useState } from 'react'
 
 /* ─── Données des plans ─────────────────────────────────────────────────── */
 
@@ -92,44 +102,66 @@ const PLANS: PlanData[] = [
   },
 ]
 
-const FEATURES = [
+const FEATURES: Array<{
+  Icone: React.ComponentType<{ className?: string }>
+  couleur: string
+  bg: string
+  titre: string
+  desc: string
+}> = [
   {
-    icone: '🎫',
+    Icone: Ticket,
+    couleur: 'text-pressci-primary',
+    bg: 'bg-pressci-light',
     titre: 'Tickets de dépôt numériques',
     desc: 'Créez un ticket en 30 secondes : client, articles, prix, date de retrait. Numérotation automatique.',
   },
   {
-    icone: '💰',
+    Icone: Tag,
+    couleur: 'text-emerald-600',
+    bg: 'bg-emerald-50',
     titre: 'Caisse & encaissements',
     desc: 'Encaissez en cash, Wave, Orange Money, MTN, Moov. Rapport de caisse imprimable avec logo.',
   },
   {
-    icone: '👥',
+    Icone: Users,
+    couleur: 'text-blue-600',
+    bg: 'bg-blue-50',
     titre: 'Gestion des clients',
     desc: 'Fiche client, historique des dépôts, créances en cours, clients fidèles. Relance en un clic.',
   },
   {
-    icone: '💬',
+    Icone: MessageCircle,
+    couleur: 'text-green-600',
+    bg: 'bg-green-50',
     titre: 'Notifications WhatsApp',
     desc: 'Prévenez votre client que son linge est prêt directement via WhatsApp. Zéro SMS payant.',
   },
   {
-    icone: '📊',
+    Icone: BarChart3,
+    couleur: 'text-violet-600',
+    bg: 'bg-violet-50',
     titre: 'Statistiques & rapports',
     desc: 'CA par jour, semaine, mois. Top articles, top clients. Graphiques clairs pour piloter votre activité.',
   },
   {
-    icone: '📚',
+    Icone: BookOpen,
+    couleur: 'text-orange-600',
+    bg: 'bg-orange-50',
     titre: 'Comptabilité SYSCOHADA',
     desc: 'Journal comptable, dépenses par code de charge, compte de résultat et balance. Conforme aux normes OHADA.',
   },
   {
-    icone: '👮',
+    Icone: ShieldCheck,
+    couleur: 'text-rose-600',
+    bg: 'bg-rose-50',
     titre: 'Gestion des agents',
     desc: 'Créez des comptes agents avec permissions fines : caisse, tickets, clients, vêtements. Ouverture horodatée.',
   },
   {
-    icone: '📱',
+    Icone: Smartphone,
+    couleur: 'text-sky-600',
+    bg: 'bg-sky-50',
     titre: 'Application mobile (PWA)',
     desc: "Installez l'app sur Android sans passer par le Play Store. Fonctionne hors connexion.",
   },
@@ -421,8 +453,8 @@ export default function LandingPage() {
                 key={f.titre}
                 className="group rounded-2xl border border-gray-200 bg-white p-6 transition hover:border-pressci-primary hover:shadow-md"
               >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-pressci-light text-2xl">
-                  {f.icone}
+                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl ${f.bg}`}>
+                  <f.Icone className={`h-6 w-6 ${f.couleur}`} />
                 </div>
                 <h3 className="mb-2 font-bold text-gray-900">{f.titre}</h3>
                 <p className="text-sm leading-relaxed text-gray-500">{f.desc}</p>
