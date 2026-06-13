@@ -63,6 +63,18 @@ export default function ParametresPage() {
   const [abonnement, setAbonnement] = useState<Abonnement | null>(null)
   const [paiementEnCours, setPaiementEnCours] = useState<Plan | null>(null)
 
+  // Retour d'un paiement GeniusPay échoué ou annulé
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('paiement') === 'echec') {
+      window.history.replaceState({}, '', '/parametres')
+      setSection('abonnement')
+      setErreur(
+        'Le paiement a échoué ou a été annulé. Aucun montant n’a été débité — vous pouvez réessayer.'
+      )
+    }
+  }, [])
+
   // Chargement du profil utilisateur et du thème
   useEffect(() => {
     setTheme(lireTheme())

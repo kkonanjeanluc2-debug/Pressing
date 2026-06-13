@@ -16,9 +16,53 @@ import { createClient } from '@/lib/supabase/client'
 import { formatFCFA, formatHeure } from '@/lib/utils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 export default function DashboardPage() {
   const router = useRouter()
+  const [retourPaiement, setRetourPaiement] = useState<
+    'pro' | 'reseau' | 'en_attente' | null
+  >(null)
+
+  // Retour de paiement GeniusPay : afficher la confirmation d'abonnement.
+  // Le webhook peut mettre quelques secondes : on revérifie plusieurs fois.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('paiement') !== 'succes') return
+    window.history.replaceState({}, '', '/')
+
+    let annule = false
+    let tentatives = 0
+    async function verifierActivation() {
+      tentatives++
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user || annule) return
+      const { data } = await supabase
+        .from('abonnements')
+        .select('plan')
+        .eq('owner_id', user.id)
+        .eq('statut', 'actif')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (annule) return
+      if (data?.plan === 'pro' || data?.plan === 'reseau') {
+        setRetourPaiement(data.plan as 'pro' | 'reseau')
+        viderCache()
+      } else if (tentatives < 6) {
+        setRetourPaiement('en_attente')
+        setTimeout(() => void verifierActivation(), 3000)
+      }
+    }
+    void verifierActivation()
+    return () => {
+      annule = true
+    }
+  }, [])
   const { pressing, pressings, chargement: chargementPressing, recharger } = usePressing()
   const { role, agent, peut } = useProfil()
 
@@ -113,6 +157,38 @@ export default function DashboardPage() {
             : `Vue d’ensemble de ${pressing.nom}`}
         </p>
       </header>
+
+      {/* Confirmation d'abonnement après paiement GeniusPay */}
+      {retourPaiement && (
+        <div
+          className={`flex items-start justify-between gap-3 rounded-card border p-4 ${
+            retourPaiement === 'en_attente'
+              ? 'border-amber-300 bg-amber-50'
+              : 'border-green-300 bg-green-50'
+          }`}
+        >
+          {retourPaiement === 'en_attente' ? (
+            <p className="text-sm font-medium text-amber-800">
+              ⏳ Paiement reçu — l’activation de votre abonnement est en cours, elle sera
+              confirmée dans quelques instants…
+            </p>
+          ) : (
+            <p className="text-sm font-medium text-green-800">
+              🎉 Paiement confirmé ! Votre abonnement{' '}
+              <strong>{retourPaiement === 'pro' ? 'Pro' : 'Réseau'}</strong> est activé pour
+              votre compte.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => setRetourPaiement(null)}
+            aria-label="Fermer"
+            className="shrink-0 text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {erreur && (
         <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>

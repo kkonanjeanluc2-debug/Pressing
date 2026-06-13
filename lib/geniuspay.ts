@@ -79,7 +79,7 @@ export async function initierPaiement(
         phone: telephoneInternational(clientTelephone),
         country: 'CI',
       },
-      success_url: `${appUrl}/parametres?paiement=succes`,
+      success_url: `${appUrl}/?paiement=succes`,
       error_url: `${appUrl}/parametres?paiement=echec`,
       metadata: {
         owner_id: ownerId,
