@@ -164,8 +164,13 @@ export async function verifierTransaction(reference: string): Promise<Transactio
     return { confirme: false, metadata: {} }
   }
 
+  // GeniusPay peut retourner status "completed", "success" ou "paid"
+  const statut = (corps.data?.status ?? '').toLowerCase()
+  const estConfirme = corps.success === true && (
+    statut === 'completed' || statut === 'success' || statut === 'paid'
+  )
   return {
-    confirme: corps.success === true && corps.data?.status === 'completed',
+    confirme: estConfirme,
     metadata: corps.data?.metadata ?? {},
   }
 }

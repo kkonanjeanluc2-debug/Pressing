@@ -52,10 +52,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ erreur: 'Payload invalide' }, { status: 400 })
   }
 
-  // Seul payment.success déclenche une activation
-  const evenement = payload.event ?? evenementHeader
-  if (evenement !== 'payment.success') {
-    return NextResponse.json({ statut: `événement ${evenement ?? 'inconnu'} ignoré` })
+  // Seul un événement de paiement réussi déclenche une activation
+  // GeniusPay peut envoyer "payment.success", "payment_success" ou "PAYMENT_SUCCESS"
+  const evenement = (payload.event ?? evenementHeader ?? '').toLowerCase().replace(/[._]/g, '_')
+  if (!evenement.includes('payment') || !evenement.includes('success')) {
+    return NextResponse.json({ statut: `événement ${evenement || 'inconnu'} ignoré` })
   }
 
   const reference = payload.data?.reference
