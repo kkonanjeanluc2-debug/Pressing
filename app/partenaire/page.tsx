@@ -5,15 +5,33 @@ import { formatDateCourte, formatFCFA } from '@/lib/utils'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import type { DashboardPartenaire } from '@/app/api/partenaire/inscrits/route'
+import type { VersementPartenaire } from '@/app/api/partenaire/versements/route'
 
 const BADGE_PLAN: Record<string, string> = {
   gratuit: 'bg-gray-100 text-gray-600',
   pro: 'bg-blue-100 text-blue-700',
+  business: 'bg-orange-100 text-orange-700',
   reseau: 'bg-violet-100 text-violet-700',
+}
+
+const LABEL_PLAN: Record<string, string> = {
+  gratuit: 'Gratuit',
+  pro: 'Pro',
+  business: 'Business',
+  reseau: 'Réseau',
+}
+
+function formatDateHeure(iso: string): string {
+  return new Date(iso).toLocaleString('fr-FR', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 export default function PartenaireDashboardPage() {
   const [data, setData] = useState<DashboardPartenaire | null>(null)
+  const [versements, setVersements] = useState<VersementPartenaire[]>([])
+  const [totalVerse, setTotalVerse] = useState(0)
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState<string | null>(null)
   const [contratSigne, setContratSigne] = useState<boolean | null>(null)
@@ -23,9 +41,10 @@ export default function PartenaireDashboardPage() {
 
   async function charger() {
     setChargement(true)
-    const [resInscrits, resProfil] = await Promise.all([
+    const [resInscrits, resProfil, resVersements] = await Promise.all([
       fetch('/api/partenaire/inscrits'),
       fetch('/api/partenaire/profil'),
+      fetch('/api/partenaire/versements'),
     ])
     const jsonInscrits = (await resInscrits.json()) as {
       succes: boolean; dashboard?: DashboardPartenaire; erreur?: string
@@ -33,6 +52,9 @@ export default function PartenaireDashboardPage() {
     const jsonProfil = (await resProfil.json()) as {
       succes: boolean
       partenaire?: { signe_admin: boolean; signe_partenaire: boolean }
+    }
+    const jsonVersements = (await resVersements.json()) as {
+      succes: boolean; versements?: VersementPartenaire[]; total_verse?: number
     }
 
     if (!jsonInscrits.succes || !jsonInscrits.dashboard) {
@@ -43,6 +65,11 @@ export default function PartenaireDashboardPage() {
 
     if (jsonProfil.succes && jsonProfil.partenaire) {
       setContratSigne(jsonProfil.partenaire.signe_admin && jsonProfil.partenaire.signe_partenaire)
+    }
+
+    if (jsonVersements.succes) {
+      setVersements(jsonVersements.versements ?? [])
+      setTotalVerse(jsonVersements.total_verse ?? 0)
     }
 
     setChargement(false)
@@ -126,7 +153,7 @@ export default function PartenaireDashboardPage() {
             </svg>
           </div>
           <p className="text-2xl font-bold text-gray-900">{formatFCFA(d.commission_estimee)}</p>
-          <p className="text-xs text-gray-500">Commission estimée</p>
+          <p className="text-xs text-gray-500">Commission totale ({d.taux_commission}%)</p>
         </Card>
 
         <Card className="space-y-2 p-5">
@@ -135,10 +162,39 @@ export default function PartenaireDashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2h2z" />
             </svg>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{d.taux_commission}%</p>
-          <p className="text-xs text-gray-500">Taux de commission</p>
+          <p className="text-2xl font-bold text-gray-900">{formatFCFA(totalVerse)}</p>
+          <p className="text-xs text-gray-500">Déjà versé</p>
         </Card>
       </div>
+
+      {/* Récapitulatif commission */}
+      {d.commission_estimee > 0 && (
+        <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-xs text-gray-400">Commission totale</p>
+              <p className="text-lg font-bold text-gray-900">{formatFCFA(d.commission_estimee)}</p>
+            </div>
+            <div className="text-gray-300">—</div>
+            <div>
+              <p className="text-xs text-gray-400">Déjà versé</p>
+              <p className="text-lg font-bold text-green-700">{formatFCFA(totalVerse)}</p>
+            </div>
+            <div className="text-gray-300">=</div>
+            <div>
+              <p className="text-xs text-gray-400">Restant à recevoir</p>
+              <p className={`text-lg font-bold ${Math.max(0, d.commission_estimee - totalVerse) > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                {formatFCFA(Math.max(0, d.commission_estimee - totalVerse))}
+              </p>
+            </div>
+          </div>
+          {Math.max(0, d.commission_estimee - totalVerse) === 0 && d.commission_estimee > 0 && (
+            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+              Tout versé
+            </span>
+          )}
+        </Card>
+      )}
 
       {/* Code promo */}
       <Card className="flex items-center justify-between gap-4 p-5">
@@ -201,7 +257,7 @@ export default function PartenaireDashboardPage() {
                     </td>
                     <td className="px-5 py-3">
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${BADGE_PLAN[u.plan] ?? BADGE_PLAN.gratuit}`}>
-                        {u.plan === 'pro' ? 'Pro' : u.plan === 'reseau' ? 'Réseau' : 'Gratuit'}
+                        {LABEL_PLAN[u.plan] ?? u.plan}
                       </span>
                     </td>
                     <td className="px-5 py-3 text-gray-500">{formatDateCourte(u.created_at)}</td>
@@ -222,6 +278,59 @@ export default function PartenaireDashboardPage() {
                       +{formatFCFA(d.commission_estimee)}
                     </p>
                   </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Historique des versements */}
+      <Card className="p-0">
+        <div className="flex items-center justify-between px-5 py-4">
+          <h2 className="font-bold text-gray-900">Historique des versements</h2>
+          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+            {versements.length}
+          </span>
+        </div>
+        {versements.length === 0 ? (
+          <div className="border-t border-gray-100 py-10 text-center">
+            <p className="text-3xl">💸</p>
+            <p className="mt-3 text-sm font-semibold text-gray-500">
+              Aucun versement reçu pour l&apos;instant.
+            </p>
+            <p className="mt-1 text-xs text-gray-400">
+              Les versements effectués par Pressing Ivoire apparaîtront ici.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-y border-gray-100 bg-gray-50 text-left text-xs uppercase text-gray-400">
+                  <th className="px-5 py-3 font-semibold">Date</th>
+                  <th className="px-5 py-3 text-right font-semibold">Montant</th>
+                  <th className="px-5 py-3 font-semibold">Commentaire</th>
+                </tr>
+              </thead>
+              <tbody>
+                {versements.map((v) => (
+                  <tr key={v.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                    <td className="px-5 py-3 text-gray-500">{formatDateHeure(v.created_at)}</td>
+                    <td className="px-5 py-3 text-right font-bold text-green-700">
+                      +{formatFCFA(v.montant)}
+                    </td>
+                    <td className="px-5 py-3 text-gray-500">{v.commentaire ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-50">
+                  <td className="px-5 py-3 text-sm font-bold text-gray-700">Total reçu</td>
+                  <td className="px-5 py-3 text-right font-bold text-green-700">
+                    +{formatFCFA(totalVerse)}
+                  </td>
+                  <td />
                 </tr>
               </tfoot>
             </table>

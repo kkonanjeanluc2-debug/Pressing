@@ -4,6 +4,7 @@ import Card from '@/components/ui/Card'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { genererContratDefaut } from '@/lib/contratTemplate'
 import { formatDateCourte } from '@/lib/utils'
+import Link from 'next/link'
 import { useState } from 'react'
 import type { PartenaireLigne } from '@/app/api/admin/partenaires/route'
 
@@ -323,20 +324,28 @@ export default function AdminPartenairesPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-500">{formatDateCourte(p.created_at)}</td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setModaleEdit(p)
-                          setEditTaux(p.taux_commission)
-                          setEditStatut(p.statut as 'actif' | 'suspendu')
-                          setEditNotes(p.notes ?? '')
-                          setEditEmail(p.email)
-                          setEditErreur(null)
-                        }}
-                        className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:border-pressci-primary hover:text-pressci-primary"
-                      >
-                        ✏️ Modifier
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/admin/partenaires/${p.id}`}
+                          className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:border-pressci-primary hover:text-pressci-primary"
+                        >
+                          Détails
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setModaleEdit(p)
+                            setEditTaux(p.taux_commission)
+                            setEditStatut(p.statut as 'actif' | 'suspendu')
+                            setEditNotes(p.notes ?? '')
+                            setEditEmail(p.email)
+                            setEditErreur(null)
+                          }}
+                          className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:border-pressci-primary hover:text-pressci-primary"
+                        >
+                          ✏️ Modifier
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
