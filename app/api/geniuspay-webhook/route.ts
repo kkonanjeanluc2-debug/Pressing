@@ -75,7 +75,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ? transaction.metadata
       : payload.data?.metadata ?? {}
   const ownerId = typeof metadata.owner_id === 'string' ? metadata.owner_id : null
-  const plan = metadata.plan === 'pro' || metadata.plan === 'reseau' ? (metadata.plan as Exclude<Plan, 'gratuit'>) : null
+  const plan =
+    metadata.plan === 'pro' || metadata.plan === 'business' || metadata.plan === 'reseau'
+      ? (metadata.plan as Exclude<Plan, 'gratuit'>)
+      : null
+  const duree =
+    typeof metadata.duree === 'number' && [1, 3, 6, 12].includes(metadata.duree as number)
+      ? (metadata.duree as number)
+      : 1
 
   if (!ownerId || !/^[0-9a-f-]{36}$/.test(ownerId) || !plan) {
     return NextResponse.json({ erreur: 'Metadata invalides' }, { status: 400 })
@@ -100,9 +107,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .eq('owner_id', ownerId)
     .eq('statut', 'actif')
 
-  // Activer le nouvel abonnement (30 jours)
+  // Activer le nouvel abonnement (duree × 30 jours)
   const dateFin = new Date()
-  dateFin.setDate(dateFin.getDate() + 30)
+  dateFin.setDate(dateFin.getDate() + duree * 30)
 
   const { error } = await supabase.from('abonnements').insert({
     owner_id: ownerId,

@@ -42,9 +42,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const plan =
-    metadata.plan === 'pro' || metadata.plan === 'reseau'
+    metadata.plan === 'pro' || metadata.plan === 'business' || metadata.plan === 'reseau'
       ? (metadata.plan as Exclude<Plan, 'gratuit'>)
       : null
+  const duree =
+    typeof metadata.duree === 'number' && [1, 3, 6, 12].includes(metadata.duree as number)
+      ? (metadata.duree as number)
+      : 1
   if (!plan) {
     return NextResponse.json({ succes: false, erreur: 'Plan invalide dans les metadata' }, { status: 400 })
   }
@@ -68,9 +72,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .eq('owner_id', user.id)
     .eq('statut', 'actif')
 
-  // Activer le nouvel abonnement (30 jours)
+  // Activer le nouvel abonnement (duree × 30 jours)
   const dateFin = new Date()
-  dateFin.setDate(dateFin.getDate() + 30)
+  dateFin.setDate(dateFin.getDate() + duree * 30)
 
   const { error } = await admin.from('abonnements').insert({
     owner_id: user.id,

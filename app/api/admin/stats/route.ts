@@ -65,6 +65,7 @@ export async function GET(): Promise<NextResponse> {
   const plansActifs = (abonnementsActifs.data ?? []) as Array<{ plan: string; owner_id: string }>
   const planParProprietaire = new Map(plansActifs.map((a) => [a.owner_id, a.plan]))
   const nbPro = plansActifs.filter((a) => a.plan === 'pro').length
+  const nbBusiness = plansActifs.filter((a) => a.plan === 'business').length
   const nbReseau = plansActifs.filter((a) => a.plan === 'reseau').length
   const nbGratuit = plansActifs.filter((a) => a.plan === 'gratuit').length
 
@@ -84,8 +85,9 @@ export async function GET(): Promise<NextResponse> {
     abonnements: {
       gratuit: nbGratuit,
       pro: nbPro,
+      business: nbBusiness,
       reseau: nbReseau,
-      mrr: nbPro * 5000 + nbReseau * 12000,
+      mrr: nbPro * 5000 + nbBusiness * 8000 + nbReseau * 12000,
       revenus_total: ((abonnementsPayes.data ?? []) as Array<{ montant: number }>).reduce(
         (s, a) => s + (a.montant ?? 0),
         0

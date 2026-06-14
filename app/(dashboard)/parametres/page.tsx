@@ -64,6 +64,7 @@ export default function ParametresPage() {
   // ---- Abonnement ----
   const [abonnement, setAbonnement] = useState<Abonnement | null>(null)
   const [paiementEnCours, setPaiementEnCours] = useState<Plan | null>(null)
+  const [duree, setDuree] = useState<1 | 3 | 6 | 12>(1)
 
   // Retour d'un paiement GeniusPay échoué ou annulé
   useEffect(() => {
@@ -222,7 +223,7 @@ export default function ParametresPage() {
       const res = await fetch('/api/abonnement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, duree }),
       })
       const data = (await res.json()) as { succes: boolean; url?: string; reference?: string; erreur?: string }
       if (data.succes && data.url) {
@@ -604,15 +605,47 @@ export default function ParametresPage() {
               <Card className="space-y-4">
                 <h2 className="text-sm font-semibold text-gray-700">Changer de forfait</h2>
 
+                {/* Sélecteur de durée */}
+                <div>
+                  <p className="mb-2 text-xs font-medium text-gray-500">Durée d'engagement</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {([1, 3, 6, 12] as const).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDuree(d)}
+                        className={`rounded-xl border py-2.5 text-center text-sm font-semibold transition-all ${
+                          duree === d
+                            ? 'border-pressci-primary bg-pressci-light text-pressci-primary shadow-sm'
+                            : 'border-gray-200 text-gray-500 hover:border-pressci-primary'
+                        }`}
+                      >
+                        {d === 1 ? '1 mois' : d === 12 ? '1 an' : `${d} mois`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="space-y-3">
                   {PLANS.map((p) => {
                     const actif = p.id === planActuel
+                    const prixTotal = p.prix * duree
                     const fonctionnalites: string[] =
                       p.id === 'gratuit'
                         ? ['1 pressing', '20 tickets / mois', 'Tableau de bord', 'Gestion clients']
                         : p.id === 'pro'
                         ? [
                             '1 pressing',
+                            'Tickets illimités',
+                            'Gestion des agents',
+                            'Statistiques complètes',
+                            'Comptabilité SYSCOHADA',
+                            'Notifications WhatsApp',
+                            'PDF professionnel + logo',
+                          ]
+                        : p.id === 'business'
+                        ? [
+                            '3 pressings',
                             'Tickets illimités',
                             'Gestion des agents',
                             'Statistiques complètes',
@@ -629,14 +662,14 @@ export default function ParametresPage() {
                     return (
                       <div
                         key={p.id}
-                        className={`rounded-card border p-4 ${
+                        className={`rounded-card border p-4 transition-colors ${
                           actif
                             ? 'border-pressci-primary bg-pressci-light'
                             : 'border-gray-200 bg-white'
                         }`}
                       >
-                        <div className="mb-3 flex items-center justify-between">
-                          <div>
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
                             <p className="font-semibold text-gray-800">
                               {p.nom}{' '}
                               {actif && (
@@ -645,16 +678,30 @@ export default function ParametresPage() {
                                 </span>
                               )}
                             </p>
-                            <p className="text-sm font-bold text-pressci-dark">
-                              {p.prix === 0 ? 'Gratuit' : `${formatFCFA(p.prix)} / mois`}
-                            </p>
+                            {p.prix === 0 ? (
+                              <p className="text-sm font-bold text-pressci-dark">Gratuit</p>
+                            ) : (
+                              <div>
+                                <p className="text-sm font-bold text-pressci-dark">
+                                  {formatFCFA(prixTotal)}
+                                  {duree > 1 && (
+                                    <span className="ml-1 text-xs font-normal text-gray-500">
+                                      ({duree} × {formatFCFA(p.prix)}/mois)
+                                    </span>
+                                  )}
+                                  {duree === 1 && (
+                                    <span className="ml-1 text-xs font-normal text-gray-500">/ mois</span>
+                                  )}
+                                </p>
+                              </div>
+                            )}
                           </div>
                           {!actif && p.id !== 'gratuit' && (
                             <button
                               type="button"
-                              onClick={() => void passerAuPlan(p.id)}
+                              onClick={() => void passerAuPlan(p.id as Plan)}
                               disabled={paiementEnCours !== null}
-                              className="rounded-full bg-pressci-primary px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                              className="shrink-0 rounded-full bg-pressci-primary px-4 py-2 text-xs font-semibold text-white hover:bg-pressci-dark disabled:opacity-50"
                             >
                               {paiementEnCours === p.id ? '…' : 'Souscrire'}
                             </button>

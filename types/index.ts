@@ -1,5 +1,5 @@
 export type StatutTicket = 'nouveau' | 'en_traitement' | 'pret' | 'recupere' | 'annule'
-export type Plan = 'gratuit' | 'pro' | 'reseau'
+export type Plan = 'gratuit' | 'pro' | 'business' | 'reseau'
 export type ModePaiement =
   | 'cash'
   | 'wave'
@@ -243,6 +243,14 @@ export const PLANS: PlanInfo[] = [
     limite_pressings: 1,
   },
   {
+    id: 'business',
+    nom: 'Business',
+    prix: 8000,
+    description: '3 pressings · tickets et SMS illimités',
+    limite_tickets: null,
+    limite_pressings: 3,
+  },
+  {
     id: 'reseau',
     nom: 'Réseau',
     prix: 12000,
@@ -263,6 +271,7 @@ export interface StatsAdmin {
   abonnements: {
     gratuit: number
     pro: number
+    business: number
     reseau: number
     mrr: number
     revenus_total: number

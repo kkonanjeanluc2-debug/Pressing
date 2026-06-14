@@ -17,7 +17,8 @@ import { createHmac, timingSafeEqual } from 'crypto'
 const BASE_URL = process.env.GENIUSPAY_BASE_URL ?? 'https://geniuspay.ci/api/v1/merchant'
 
 export const PRIX_PLANS: Record<Exclude<Plan, 'gratuit'>, number> = {
-  pro: 200,
+  pro: 5000,
+  business: 8000,
   reseau: 12000,
 }
 
@@ -58,7 +59,8 @@ export async function initierPaiement(
   ownerId: string,
   plan: Exclude<Plan, 'gratuit'>,
   clientNom: string,
-  clientTelephone: string
+  clientTelephone: string,
+  duree: number = 1
 ): Promise<InitPaiementResult> {
   const headers = entetes()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -66,14 +68,17 @@ export async function initierPaiement(
     return { succes: false, erreur: 'Configuration GeniusPay manquante' }
   }
 
+  const montantTotal = PRIX_PLANS[plan] * duree
+  const nomPlan = plan === 'pro' ? 'Pro' : plan === 'business' ? 'Business' : 'Réseau'
+  const descDuree = duree === 1 ? '1 mois' : `${duree} mois`
+
   const res = await fetch(`${BASE_URL}/payments`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      amount: PRIX_PLANS[plan],
+      amount: montantTotal,
       currency: 'XOF',
-      // payment_method omis → page de checkout GeniusPay (tous les moyens)
-      description: `Abonnement PressCI ${plan === 'pro' ? 'Pro' : 'Réseau'}`,
+      description: `Abonnement PressCI ${nomPlan} — ${descDuree}`,
       customer: {
         name: clientNom,
         phone: telephoneInternational(clientTelephone),
@@ -84,6 +89,7 @@ export async function initierPaiement(
       metadata: {
         owner_id: ownerId,
         plan,
+        duree,
         produit: 'abonnement_pressci',
       },
     }),

@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 interface CorpsRequete {
   plan?: string
+  duree?: number
 }
 
 /**
@@ -36,10 +37,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ succes: false, erreur: 'Requête invalide' }, { status: 400 })
   }
 
-  if (corps.plan !== 'pro' && corps.plan !== 'reseau') {
+  if (corps.plan !== 'pro' && corps.plan !== 'business' && corps.plan !== 'reseau') {
     return NextResponse.json({ succes: false, erreur: 'Plan inconnu' }, { status: 400 })
   }
   const plan = corps.plan as Exclude<Plan, 'gratuit'>
+  const duree = typeof corps.duree === 'number' && [1, 3, 6, 12].includes(corps.duree)
+    ? corps.duree
+    : 1
 
   // Identité de facturation : profil du titulaire, sinon premier pressing
   const [{ data: profil }, { data: pressing }] = await Promise.all([
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     (pressing?.telephone as string | null | undefined) ??
     '0000000000'
 
-  const resultat = await initierPaiement(user.id, plan, nomClient, telClient)
+  const resultat = await initierPaiement(user.id, plan, nomClient, telClient, duree)
 
   return NextResponse.json(resultat, { status: resultat.succes ? 200 : 502 })
 }
