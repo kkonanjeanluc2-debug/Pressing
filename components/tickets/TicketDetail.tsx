@@ -68,8 +68,8 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         `. Retrait prévu le ${formatDate(ticket.date_prevue)}. Merci de votre confiance !`
 
   /** Télécharge le ticket en PDF A4. */
-  function telechargerPdf() {
-    const doc = genererTicketPdf(ticket, pressing, proprietaire)
+  async function telechargerPdf() {
+    const doc = await genererTicketPdf(ticket, pressing, proprietaire)
     doc.save(`ticket-${ticket.numero.replace('#', '')}.pdf`)
   }
 
@@ -94,7 +94,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
     }
 
     // Ordinateur : téléchargement du PDF puis guide pas-à-pas
-    const doc = genererTicketPdf(ticket, pressing, proprietaire)
+    const doc = await genererTicketPdf(ticket, pressing, proprietaire)
     const nomFichier = `ticket-${ticket.numero.replace('#', '')}.pdf`
     doc.save(nomFichier)
     setGuideWhatsApp(true)
@@ -299,7 +299,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
       <div className="grid grid-cols-3 gap-2">
         <button
           type="button"
-          onClick={telechargerPdf}
+          onClick={() => void telechargerPdf()}
           className="rounded-card border border-pressci-primary bg-white px-2 py-2.5 text-sm font-semibold text-pressci-primary active:bg-pressci-light"
         >
           📄 PDF A4

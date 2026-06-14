@@ -15,35 +15,75 @@ const VERT: [number, number, number] = [15, 110, 86]
 const VERT_CLAIR: [number, number, number] = [159, 225, 203]
 const VERT_PALE: [number, number, number] = [225, 245, 238]
 
+/** Charge une image distante et la retourne en data URL base64. */
+async function chargerImageBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
 /**
  * Génère le ticket de dépôt en PDF A4 aux couleurs PressCI
  * (téléchargement direct et envoi WhatsApp).
  * Les informations du propriétaire (raison sociale, RCCM, NCC)
  * apparaissent dans l'en-tête quand le profil est renseigné.
+ * Le logo du pressing (profil.logo_url) s'affiche en haut à gauche.
  */
-export function genererTicketPdf(
+export async function genererTicketPdf(
   ticket: Ticket,
   pressing: Pressing,
   proprietaire?: ProfilProprietaire | null
-): jsPDF {
+): Promise<jsPDF> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const hauteurEntete = proprietaire ? 50 : 44
+
+  // Pré-chargement du logo (si disponible)
+  const logoBase64 = proprietaire?.logo_url
+    ? await chargerImageBase64(proprietaire.logo_url)
+    : null
 
   // ---- En-tête vert foncé ----
   doc.setFillColor(...VERT_FONCE)
   doc.rect(0, 0, 210, hauteurEntete, 'F')
 
-  doc.setFillColor(...VERT_CLAIR)
-  doc.roundedRect(12, 8, 12, 12, 2, 2, 'F')
-  doc.setTextColor(...VERT_FONCE)
-  doc.setFontSize(14)
-  doc.setFont('helvetica', 'bold')
-  doc.text('P', 18, 16.5, { align: 'center' })
+  // Logo ou placeholder "P"
+  if (logoBase64) {
+    doc.setFillColor(255, 255, 255)
+    doc.roundedRect(12, 7, 14, 14, 2, 2, 'F')
+    try {
+      doc.addImage(logoBase64, 12, 7, 14, 14)
+    } catch {
+      // Format non supporté : fallback placeholder
+      doc.setFillColor(...VERT_CLAIR)
+      doc.roundedRect(12, 8, 12, 12, 2, 2, 'F')
+      doc.setTextColor(...VERT_FONCE)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('P', 18, 16.5, { align: 'center' })
+    }
+  } else {
+    doc.setFillColor(...VERT_CLAIR)
+    doc.roundedRect(12, 8, 12, 12, 2, 2, 'F')
+    doc.setTextColor(...VERT_FONCE)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('P', 18, 16.5, { align: 'center' })
+  }
 
   doc.setTextColor(...VERT_CLAIR)
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text('Pressing Ivoire', 28, 14)
+  doc.text('Pressing Ivoire', 30, 14)
 
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(18)
