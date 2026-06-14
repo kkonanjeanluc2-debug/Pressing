@@ -133,20 +133,23 @@ export async function POST(request: Request): Promise<NextResponse> {
   })
 }
 
-/** PATCH /api/admin/partenaires — met à jour statut ou taux */
+/** PATCH /api/admin/partenaires — met à jour statut, taux, email */
 export async function PATCH(request: Request): Promise<NextResponse> {
   if (!(await verifierSuperAdmin())) {
     return NextResponse.json({ succes: false, erreur: 'Accès réservé' }, { status: 403 })
   }
 
-  const { id, ...champs } = (await request.json()) as {
+  const body = (await request.json()) as {
     id: string
+    email?: string
     statut?: string
     taux_commission?: number
     notes?: string
   }
 
-  if (!id) {
+  const { id: _id, email, ...champsTable } = body
+
+  if (!body.id) {
     return NextResponse.json({ succes: false, erreur: 'id requis' }, { status: 400 })
   }
 
@@ -155,7 +158,27 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     return NextResponse.json({ succes: false, erreur: (e as Error).message }, { status: 500 })
   }
 
-  const { error } = await admin.from('partenaires').update(champs).eq('id', id)
+  // Changement d'email : mise à jour dans auth.users ET dans la table partenaires
+  if (email) {
+    const { data: partenaire } = await admin
+      .from('partenaires')
+      .select('user_id')
+      .eq('id', body.id)
+      .maybeSingle()
+
+    if (partenaire?.user_id) {
+      const { error: authError } = await admin.auth.admin.updateUserById(
+        partenaire.user_id as string,
+        { email }
+      )
+      if (authError) {
+        return NextResponse.json({ succes: false, erreur: authError.message }, { status: 500 })
+      }
+    }
+  }
+
+  const updateData = email ? { ...champsTable, email } : champsTable
+  const { error } = await admin.from('partenaires').update(updateData).eq('id', body.id)
   if (error) {
     return NextResponse.json({ succes: false, erreur: error.message }, { status: 500 })
   }

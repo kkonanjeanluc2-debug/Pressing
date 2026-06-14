@@ -109,16 +109,34 @@ export default function AdminPartenairesPage() {
   const [editTaux, setEditTaux] = useState(10)
   const [editStatut, setEditStatut] = useState<'actif' | 'suspendu'>('actif')
   const [editNotes, setEditNotes] = useState('')
+  const [editEmail, setEditEmail] = useState('')
   const [editEnCours, setEditEnCours] = useState(false)
+  const [editErreur, setEditErreur] = useState<string | null>(null)
 
   async function sauvegarderEdit() {
     if (!modaleEdit) return
     setEditEnCours(true)
-    await fetch('/api/admin/partenaires', {
+    setEditErreur(null)
+    const body: Record<string, unknown> = {
+      id: modaleEdit.id,
+      taux_commission: editTaux,
+      statut: editStatut,
+      notes: editNotes,
+    }
+    if (editEmail.trim() && editEmail.trim() !== modaleEdit.email) {
+      body.email = editEmail.trim()
+    }
+    const res = await fetch('/api/admin/partenaires', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: modaleEdit.id, taux_commission: editTaux, statut: editStatut, notes: editNotes }),
+      body: JSON.stringify(body),
     })
+    const data = (await res.json()) as { succes: boolean; erreur?: string }
+    if (!data.succes) {
+      setEditErreur(data.erreur ?? 'Erreur lors de la mise à jour.')
+      setEditEnCours(false)
+      return
+    }
     setModaleEdit(null)
     void recharger()
     setEditEnCours(false)
@@ -312,6 +330,8 @@ export default function AdminPartenairesPage() {
                           setEditTaux(p.taux_commission)
                           setEditStatut(p.statut as 'actif' | 'suspendu')
                           setEditNotes(p.notes ?? '')
+                          setEditEmail(p.email)
+                          setEditErreur(null)
                         }}
                         className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:border-pressci-primary hover:text-pressci-primary"
                       >
@@ -486,6 +506,15 @@ export default function AdminPartenairesPage() {
             <p className="mb-4 text-sm font-semibold text-gray-500">{modaleEdit.nom}</p>
             <div className="space-y-4">
               <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Adresse e-mail</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-pressci-primary"
+                />
+              </div>
+              <div>
                 <label className="mb-1 block text-xs font-medium text-gray-700">Taux de commission (%)</label>
                 <div className="flex items-center gap-3">
                   <input type="range" min={0} max={50} step={1} value={editTaux}
@@ -516,6 +545,9 @@ export default function AdminPartenairesPage() {
                 />
               </div>
             </div>
+            {editErreur && (
+              <p className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{editErreur}</p>
+            )}
             <div className="mt-5 flex gap-2">
               <button type="button" onClick={() => void sauvegarderEdit()} disabled={editEnCours}
                 className="flex-1 rounded-full bg-pressci-primary py-2.5 text-sm font-bold text-white disabled:opacity-60"
