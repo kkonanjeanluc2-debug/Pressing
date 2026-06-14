@@ -227,12 +227,12 @@ function CrossIcon() {
 
 /* ─── Composant principal ───────────────────────────────────────────────── */
 
-const PERIODES = [
+const PERIODES: Array<{ duree: 1 | 3 | 6 | 12; label: string; remise?: boolean }> = [
   { duree: 1, label: '1 mois' },
   { duree: 3, label: '3 mois' },
   { duree: 6, label: '6 mois' },
   { duree: 12, label: '1 an', remise: true },
-] as const
+]
 
 export default function LandingPage() {
   const [duree, setDuree] = useState<1 | 3 | 6 | 12>(1)
