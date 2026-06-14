@@ -58,6 +58,16 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (user) {
+    // Compte désactivé par l'admin (compte_actif=false dans user_metadata).
+    // getUser() retourne toujours les métadonnées fraîches depuis le serveur,
+    // donc ce check est immédiat même si le JWT est encore valide.
+    const meta = user.user_metadata as Record<string, unknown> | undefined
+    if (meta?.compte_actif === false) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+
     // Détecter un partenaire : d'abord via les métadonnées (rapide, sans DB),
     // sinon via la table partenaires (fallback pour comptes antérieurs sans role).
     let estPartenaire = user.user_metadata?.role === 'partenaire'

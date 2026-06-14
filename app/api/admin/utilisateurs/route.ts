@@ -3,9 +3,12 @@ import { createAdminClient } from '@/lib/supabase/server'
 import type { UtilisateurAdmin } from '@/types'
 import { NextResponse, type NextRequest } from 'next/server'
 
-function estBanni(bannedUntil: string | null | undefined): boolean {
-  if (!bannedUntil) return false
-  return new Date(bannedUntil) > new Date()
+function estActif(bannedUntil: string | null | undefined, meta: Record<string, unknown> | null): boolean {
+  // Notre flag explicite (source de vérité principale)
+  if (meta?.compte_actif === false) return false
+  // Fallback : ban_duration Supabase pour les comptes bannis avant ce système
+  if (bannedUntil && new Date(bannedUntil) > new Date()) return false
+  return true
 }
 
 /** GET /api/admin/utilisateurs — tous les comptes propriétaires. */
@@ -34,7 +37,11 @@ export async function GET(): Promise<NextResponse> {
   const compteMap = new Map(
     (comptes.data?.users ?? []).map((u) => [
       u.id,
-      { email: u.email ?? '', banned_until: u.banned_until ?? null },
+      {
+        email: u.email ?? '',
+        banned_until: u.banned_until ?? null,
+        meta: (u.user_metadata as Record<string, unknown> | null) ?? null,
+      },
     ])
   )
   const nbPressings = new Map<string, number>()
@@ -67,7 +74,7 @@ export async function GET(): Promise<NextResponse> {
       created_at: p.created_at,
       nb_pressings: nbPressings.get(p.user_id) ?? 0,
       plan: plans.get(p.user_id) ?? 'gratuit',
-      actif: !estBanni(compte?.banned_until),
+      actif: estActif(compte?.banned_until, compte?.meta ?? null),
     }
   })
 
@@ -90,18 +97,17 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ succes: false, erreur: (e as Error).message }, { status: 500 })
   }
 
+  // Stocker l'état actif dans user_metadata : c'est ce champ que le middleware
+  // lit via getUser() pour bloquer immédiatement l'accès sans attendre
+  // l'expiration du JWT. ban_duration reste en complément pour bloquer
+  // les nouvelles connexions côté Supabase Auth.
   const { error } = await admin.auth.admin.updateUserById(body.user_id, {
     ban_duration: body.actif ? 'none' : '876000h',
+    user_metadata: { compte_actif: body.actif },
   })
 
   if (error) {
     return NextResponse.json({ succes: false, erreur: error.message }, { status: 500 })
-  }
-
-  // Quand on désactive : déconnecter toutes les sessions actives immédiatement
-  // pour ne pas attendre l'expiration naturelle du JWT (jusqu'à 1 heure)
-  if (!body.actif) {
-    await admin.auth.admin.signOut(body.user_id, 'global')
   }
 
   return NextResponse.json({ succes: true })
