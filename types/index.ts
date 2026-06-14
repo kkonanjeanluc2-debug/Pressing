@@ -284,6 +284,7 @@ export interface UtilisateurAdmin {
   created_at: string
   nb_pressings: number
   plan: string
+  actif: boolean
 }
 
 export interface AbonnementAdmin {

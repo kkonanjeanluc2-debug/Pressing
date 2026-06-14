@@ -42,12 +42,14 @@ export default function AdminUtilisateursPage() {
     'Impossible de charger les utilisateurs.'
   )
 
+  /* ── Message global ── */
+  const [messageGlobal, setMessageGlobal] = useState<string | null>(null)
+
   /* ── Abonnement manuel ── */
   const [modaleAbo, setModaleAbo] = useState<UtilisateurAdmin | null>(null)
   const [planChoisi, setPlanChoisi] = useState<PlanId>('pro')
   const [jours, setJours] = useState(30)
   const [aboEnCours, setAboEnCours] = useState(false)
-  const [aboMessage, setAboMessage] = useState<string | null>(null)
   const [aboErreur, setAboErreur] = useState<string | null>(null)
 
   async function attribuerAbonnement() {
@@ -61,7 +63,7 @@ export default function AdminUtilisateursPage() {
     })
     const data = (await res.json()) as { succes: boolean; erreur?: string }
     if (data.succes) {
-      setAboMessage(`✅ Abonnement ${planChoisi} de ${jours} jours attribué à ${modaleAbo.nom}.`)
+      setMessageGlobal(`✅ Abonnement ${planChoisi} de ${jours} jours attribué à ${modaleAbo.nom}.`)
       setModaleAbo(null)
       void recharger()
     } else {
@@ -104,6 +106,53 @@ export default function AdminUtilisateursPage() {
     setTimeout(() => setCopie(false), 2000)
   }
 
+  /* ── Désactiver / Activer ── */
+  const [actionEnCours, setActionEnCours] = useState<string | null>(null)
+
+  async function toggleActif(user: UtilisateurAdmin) {
+    setActionEnCours(user.user_id)
+    const res = await fetch('/api/admin/utilisateurs', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: user.user_id, actif: !user.actif }),
+    })
+    const data = (await res.json()) as { succes: boolean; erreur?: string }
+    if (data.succes) {
+      setMessageGlobal(
+        user.actif
+          ? `⛔ Compte de ${user.nom} désactivé.`
+          : `✅ Compte de ${user.nom} réactivé.`
+      )
+      void recharger()
+    } else {
+      setMessageGlobal(`❌ Erreur : ${data.erreur ?? 'Action impossible.'}`)
+    }
+    setActionEnCours(null)
+  }
+
+  /* ── Supprimer ── */
+  const [modaleSuppr, setModaleSuppr] = useState<UtilisateurAdmin | null>(null)
+  const [supprEnCours, setSupprEnCours] = useState(false)
+  const [supprErreur, setSupprErreur] = useState<string | null>(null)
+
+  async function supprimerCompte() {
+    if (!modaleSuppr) return
+    setSupprEnCours(true)
+    setSupprErreur(null)
+    const res = await fetch(`/api/admin/utilisateurs?id=${modaleSuppr.user_id}`, {
+      method: 'DELETE',
+    })
+    const data = (await res.json()) as { succes: boolean; erreur?: string }
+    if (data.succes) {
+      setMessageGlobal(`🗑️ Compte de ${modaleSuppr.nom} supprimé définitivement.`)
+      setModaleSuppr(null)
+      void recharger()
+    } else {
+      setSupprErreur(data.erreur ?? 'Erreur inconnue.')
+    }
+    setSupprEnCours(false)
+  }
+
   /* ── Filtre ── */
   const utilisateurs = donnees ?? []
   const rechercheNorm = recherche.trim().toLowerCase()
@@ -135,8 +184,8 @@ export default function AdminUtilisateursPage() {
         />
       </header>
 
-      {aboMessage && (
-        <p className="rounded-card bg-green-50 px-3 py-2 text-sm text-green-700">{aboMessage}</p>
+      {messageGlobal && (
+        <p className="rounded-card bg-green-50 px-3 py-2 text-sm text-green-700">{messageGlobal}</p>
       )}
       {erreur && (
         <p className="rounded-card bg-red-50 px-3 py-2 text-sm text-red-700">{erreur}</p>
@@ -155,6 +204,7 @@ export default function AdminUtilisateursPage() {
                 <th className="px-4 py-3 font-semibold">Contact</th>
                 <th className="px-4 py-3 text-center font-semibold">Pressings</th>
                 <th className="px-4 py-3 font-semibold">Plan</th>
+                <th className="px-4 py-3 font-semibold">Statut</th>
                 <th className="px-4 py-3 font-semibold">Inscrit le</th>
                 <th className="px-4 py-3 font-semibold">Actions</th>
               </tr>
@@ -162,13 +212,16 @@ export default function AdminUtilisateursPage() {
             <tbody>
               {filtres.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                     Aucun utilisateur trouvé.
                   </td>
                 </tr>
               ) : (
                 filtres.map((u) => (
-                  <tr key={u.user_id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr
+                    key={u.user_id}
+                    className={`border-b border-gray-100 transition-colors hover:bg-gray-50 ${!u.actif ? 'opacity-60' : ''}`}
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pressci-light text-sm font-bold text-pressci-primary">
@@ -199,30 +252,75 @@ export default function AdminUtilisateursPage() {
                         {u.plan === 'pro' ? 'Pro' : u.plan === 'reseau' ? 'Réseau' : 'Gratuit'}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          u.actif ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}
+                      >
+                        {u.actif ? 'Actif' : 'Désactivé'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-gray-500">{formatDateCourte(u.created_at)}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {/* Abonnement */}
                         <button
                           type="button"
                           onClick={() => {
-                            setAboMessage(null)
+                            setMessageGlobal(null)
                             setAboErreur(null)
                             setPlanChoisi('pro')
                             setJours(30)
                             setModaleAbo(u)
                           }}
                           title="Attribuer un abonnement"
-                          className="flex items-center gap-1 rounded-lg bg-pressci-light px-2.5 py-1.5 text-xs font-semibold text-pressci-primary transition-colors hover:bg-pressci-primary hover:text-white"
+                          className="rounded-lg bg-pressci-light px-2.5 py-1.5 text-xs font-semibold text-pressci-primary transition-colors hover:bg-pressci-primary hover:text-white"
                         >
                           🎁 Abonnement
                         </button>
+
+                        {/* Reset MDP */}
                         <button
                           type="button"
                           onClick={() => void genererLienReset(u)}
                           title="Réinitialiser le mot de passe"
-                          className="flex items-center gap-1 rounded-lg bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-500 hover:text-white"
+                          className="rounded-lg bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-500 hover:text-white"
                         >
                           🔑 Reset MDP
+                        </button>
+
+                        {/* Activer / Désactiver */}
+                        <button
+                          type="button"
+                          disabled={actionEnCours === u.user_id}
+                          onClick={() => void toggleActif(u)}
+                          title={u.actif ? 'Désactiver le compte' : 'Réactiver le compte'}
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                            u.actif
+                              ? 'bg-yellow-50 text-yellow-700 hover:bg-yellow-500 hover:text-white'
+                              : 'bg-green-50 text-green-700 hover:bg-green-500 hover:text-white'
+                          }`}
+                        >
+                          {actionEnCours === u.user_id
+                            ? '…'
+                            : u.actif
+                              ? '⛔ Désactiver'
+                              : '✅ Activer'}
+                        </button>
+
+                        {/* Supprimer */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMessageGlobal(null)
+                            setSupprErreur(null)
+                            setModaleSuppr(u)
+                          }}
+                          title="Supprimer définitivement"
+                          className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-500 hover:text-white"
+                        >
+                          🗑️ Supprimer
                         </button>
                       </div>
                     </td>
@@ -246,7 +344,6 @@ export default function AdminUtilisateursPage() {
               </strong>
             </p>
 
-            {/* Choix du plan */}
             <p className="mb-2 text-sm font-medium text-gray-700">Forfait</p>
             <div className="mb-4 grid grid-cols-3 gap-2">
               {PLANS_OPTIONS.map((p) => (
@@ -265,7 +362,6 @@ export default function AdminUtilisateursPage() {
               ))}
             </div>
 
-            {/* Durée */}
             <p className="mb-2 text-sm font-medium text-gray-700">Durée</p>
             <div className="mb-3 grid grid-cols-5 gap-2">
               {DUREES_RAPIDES.map((d) => (
@@ -307,9 +403,7 @@ export default function AdminUtilisateursPage() {
             </div>
 
             {aboErreur && (
-              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-                {aboErreur}
-              </p>
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{aboErreur}</p>
             )}
 
             <div className="mt-5 flex gap-2">
@@ -350,11 +444,9 @@ export default function AdminUtilisateursPage() {
                 <span className="spinner spinner-dark h-7 w-7" />
               </div>
             )}
-
             {resetErreur && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{resetErreur}</p>
             )}
-
             {lienReset && !resetEnCours && (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">
@@ -393,6 +485,50 @@ export default function AdminUtilisateursPage() {
             >
               Fermer
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ════ Modale : confirmation suppression ════ */}
+      {modaleSuppr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl">
+              🗑️
+            </div>
+            <h2 className="mb-1 text-lg font-bold text-gray-900">Supprimer ce compte ?</h2>
+            <p className="mb-2 text-sm text-gray-600">
+              Vous allez supprimer définitivement le compte de{' '}
+              <strong className="text-gray-800">{modaleSuppr.nom}</strong> ({modaleSuppr.email}).
+            </p>
+            <p className="mb-5 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+              ⚠️ Cette action est irréversible. Toutes les données associées (pressings, tickets,
+              clients) seront supprimées en cascade.
+            </p>
+
+            {supprErreur && (
+              <p className="mb-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700">
+                {supprErreur}
+              </p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void supprimerCompte()}
+                disabled={supprEnCours}
+                className="flex-1 rounded-full bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {supprEnCours ? 'Suppression…' : 'Oui, supprimer'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setModaleSuppr(null)}
+                className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-semibold text-gray-600"
+              >
+                Annuler
+              </button>
+            </div>
           </div>
         </div>
       )}
