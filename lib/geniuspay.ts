@@ -17,7 +17,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 const BASE_URL = process.env.GENIUSPAY_BASE_URL ?? 'https://geniuspay.ci/api/v1/merchant'
 
 export const PRIX_PLANS: Record<Exclude<Plan, 'gratuit'>, number> = {
-  pro: 5000,
+  pro: 200,
   reseau: 12000,
 }
 
