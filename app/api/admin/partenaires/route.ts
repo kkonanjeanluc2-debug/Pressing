@@ -214,3 +214,44 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
   return NextResponse.json({ succes: true })
 }
+
+/** DELETE /api/admin/partenaires — supprime un partenaire et son compte auth */
+export async function DELETE(request: Request): Promise<NextResponse> {
+  if (!(await verifierSuperAdmin())) {
+    return NextResponse.json({ succes: false, erreur: 'Accès réservé' }, { status: 403 })
+  }
+
+  const body = (await request.json()) as { id: string }
+  if (!body.id) {
+    return NextResponse.json({ succes: false, erreur: 'id requis' }, { status: 400 })
+  }
+
+  let admin: ReturnType<typeof createAdminClient>
+  try { admin = createAdminClient() } catch (e) {
+    return NextResponse.json({ succes: false, erreur: (e as Error).message }, { status: 500 })
+  }
+
+  // Récupérer le user_id avant suppression
+  const { data: partenaire } = await admin
+    .from('partenaires')
+    .select('user_id')
+    .eq('id', body.id)
+    .maybeSingle()
+
+  if (!partenaire) {
+    return NextResponse.json({ succes: false, erreur: 'Partenaire introuvable' }, { status: 404 })
+  }
+
+  // Supprimer l'enregistrement partenaire (cascade sur versements_partenaires)
+  const { error } = await admin.from('partenaires').delete().eq('id', body.id)
+  if (error) {
+    return NextResponse.json({ succes: false, erreur: error.message }, { status: 500 })
+  }
+
+  // Supprimer le compte auth si présent
+  if (partenaire.user_id) {
+    await admin.auth.admin.deleteUser(partenaire.user_id as string)
+  }
+
+  return NextResponse.json({ succes: true })
+}

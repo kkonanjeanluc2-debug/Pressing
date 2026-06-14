@@ -105,6 +105,31 @@ export default function AdminPartenairesPage() {
     setTimeout(() => setCopie(null), 2000)
   }
 
+  /* ── Supprimer ── */
+  const [modaleSuppr, setModaleSuppr] = useState<PartenaireAvecContrat | null>(null)
+  const [supprEnCours, setSupprEnCours] = useState(false)
+  const [supprErreur, setSupprErreur] = useState<string | null>(null)
+
+  async function supprimerPartenaire() {
+    if (!modaleSuppr) return
+    setSupprEnCours(true)
+    setSupprErreur(null)
+    const res = await fetch('/api/admin/partenaires', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: modaleSuppr.id }),
+    })
+    const data = (await res.json()) as { succes: boolean; erreur?: string }
+    if (!data.succes) {
+      setSupprErreur(data.erreur ?? 'Erreur lors de la suppression.')
+      setSupprEnCours(false)
+      return
+    }
+    setModaleSuppr(null)
+    setSupprEnCours(false)
+    void recharger()
+  }
+
   /* ── Modifier statut / taux ── */
   const [modaleEdit, setModaleEdit] = useState<PartenaireAvecContrat | null>(null)
   const [editTaux, setEditTaux] = useState(10)
@@ -345,6 +370,13 @@ export default function AdminPartenairesPage() {
                         >
                           ✏️ Modifier
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => { setModaleSuppr(p); setSupprErreur(null) }}
+                          className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:border-red-400 hover:bg-red-50"
+                        >
+                          🗑️
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -564,6 +596,44 @@ export default function AdminPartenairesPage() {
                 {editEnCours ? 'Enregistrement…' : 'Enregistrer'}
               </button>
               <button type="button" onClick={() => setModaleEdit(null)}
+                className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-semibold text-gray-600"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════ Modale suppression ════ */}
+      {modaleSuppr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">Supprimer ce partenaire ?</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              <span className="font-semibold">{modaleSuppr.nom}</span> — cette action est irréversible.
+              Le compte de connexion, le contrat et l&apos;historique des versements seront supprimés.
+            </p>
+            {supprErreur && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{supprErreur}</p>
+            )}
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void supprimerPartenaire()}
+                disabled={supprEnCours}
+                className="flex-1 rounded-full bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {supprEnCours ? 'Suppression…' : 'Supprimer définitivement'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setModaleSuppr(null)}
                 className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-semibold text-gray-600"
               >
                 Annuler

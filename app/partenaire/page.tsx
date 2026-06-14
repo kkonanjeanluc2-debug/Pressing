@@ -322,7 +322,7 @@ export default function PartenaireDashboardPage() {
                       +{formatFCFA(v.montant)}
                     </td>
                     <td className="px-5 py-3 text-gray-600">
-                      {({ wave: 'Wave', orange_money: 'Orange Money', mtn_money: 'MTN Money', moov_money: 'Moov Money', banque: 'Banque', cash: 'Espèces' } as Record<string, string>)[v.mode_paiement] ?? v.mode_paiement}
+                      {({ wave: 'Wave', orange_money: 'Orange Money', mtn_money: 'MTN Money', moov_money: 'Moov Money', 'virement bancaire': 'Virement bancaire', cash: 'Espèces' } as Record<string, string>)[v.mode_paiement] ?? v.mode_paiement}
                     </td>
                     <td className="px-5 py-3 text-gray-500">{v.commentaire ?? '—'}</td>
                   </tr>

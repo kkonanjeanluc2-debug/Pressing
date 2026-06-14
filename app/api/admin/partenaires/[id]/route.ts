@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import type { InscritPartenaire } from '@/app/api/partenaire/inscrits/route'
 
-export type ModePaiementVersement = 'cash' | 'wave' | 'orange_money' | 'mtn_money' | 'moov_money' | 'banque'
+export type ModePaiementVersement = 'cash' | 'wave' | 'orange_money' | 'mtn_money' | 'moov_money' | 'virement bancaire'
 
 export interface VersementLigne {
   id: string
@@ -148,7 +148,7 @@ export async function POST(
     verse_par: string
   }
 
-  const MODES_VALIDES: ModePaiementVersement[] = ['cash', 'wave', 'orange_money', 'mtn_money', 'moov_money', 'banque']
+  const MODES_VALIDES: ModePaiementVersement[] = ['cash', 'wave', 'orange_money', 'mtn_money', 'moov_money', 'virement bancaire']
 
   if (!body.montant || Number(body.montant) <= 0) {
     return NextResponse.json({ succes: false, erreur: 'Montant invalide' }, { status: 400 })

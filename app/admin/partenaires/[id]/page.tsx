@@ -11,7 +11,7 @@ const MODES_PAIEMENT: { value: ModePaiementVersement; label: string; icon: strin
   { value: 'orange_money', label: 'Orange Money',  icon: '🟠' },
   { value: 'mtn_money',   label: 'MTN Money',     icon: '🟡' },
   { value: 'moov_money',  label: 'Moov Money',    icon: '🔵' },
-  { value: 'banque',      label: 'Virement bancaire', icon: '🏦' },
+  { value: 'virement bancaire', label: 'Virement bancaire', icon: '🏦' },
   { value: 'cash',        label: 'Espèces',        icon: '💵' },
 ]
 
@@ -20,7 +20,7 @@ const LABEL_MODE: Record<ModePaiementVersement, string> = {
   orange_money: 'Orange Money',
   mtn_money: 'MTN Money',
   moov_money: 'Moov Money',
-  banque: 'Virement bancaire',
+  'virement bancaire': 'Virement bancaire',
   cash: 'Espèces',
 }
 import type { InscritPartenaire } from '@/app/api/partenaire/inscrits/route'
