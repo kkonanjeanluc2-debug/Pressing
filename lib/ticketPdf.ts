@@ -80,11 +80,6 @@ export async function genererTicketPdf(
     doc.text('P', 18, 16.5, { align: 'center' })
   }
 
-  doc.setTextColor(...VERT_CLAIR)
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
-  doc.text('Pressing Ivoire', 30, 14)
-
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
@@ -222,9 +217,10 @@ export async function genererTicketPdf(
   doc.setFontSize(9)
   doc.setTextColor(...VERT_FONCE)
   doc.setFont('helvetica', 'bold')
-  doc.text('Merci de votre confiance ! Présentez ce ticket au retrait de votre linge.', 105, 282, {
-    align: 'center',
-  })
+  const messagePied = ticket.statut === 'recupere'
+    ? 'Merci de votre confiance !'
+    : 'Merci de votre confiance ! Présentez ce ticket au retrait de votre linge.'
+  doc.text(messagePied, 105, 282, { align: 'center' })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(150)
