@@ -9,7 +9,7 @@ import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
 import { appliquerTheme, lireTheme, type Theme } from '@/lib/theme'
 import { formatFCFA } from '@/lib/utils'
-import { PLANS, type Abonnement, type Plan } from '@/types'
+import { PLANS, REMISES_DUREE, type Abonnement, type Plan } from '@/types'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -609,27 +609,39 @@ export default function ParametresPage() {
                 <div>
                   <p className="mb-2 text-xs font-medium text-gray-500">Durée d'engagement</p>
                   <div className="grid grid-cols-4 gap-2">
-                    {([1, 3, 6, 12] as const).map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setDuree(d)}
-                        className={`rounded-xl border py-2.5 text-center text-sm font-semibold transition-all ${
-                          duree === d
-                            ? 'border-pressci-primary bg-pressci-light text-pressci-primary shadow-sm'
-                            : 'border-gray-200 text-gray-500 hover:border-pressci-primary'
-                        }`}
-                      >
-                        {d === 1 ? '1 mois' : d === 12 ? '1 an' : `${d} mois`}
-                      </button>
-                    ))}
+                    {([1, 3, 6, 12] as const).map((d) => {
+                      const pct = REMISES_DUREE[d]
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setDuree(d)}
+                          className={`relative rounded-xl border py-2.5 text-center text-sm font-semibold transition-all ${
+                            duree === d
+                              ? 'border-pressci-primary bg-pressci-light text-pressci-primary shadow-sm'
+                              : 'border-gray-200 text-gray-500 hover:border-pressci-primary'
+                          }`}
+                        >
+                          {d === 1 ? '1 mois' : d === 12 ? '1 an' : `${d} mois`}
+                          {pct > 0 && (
+                            <span className={`absolute -top-2 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                              duree === d ? 'bg-pressci-primary text-white' : 'bg-green-100 text-green-700'
+                            }`}>
+                              −{pct}%
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   {PLANS.map((p) => {
                     const actif = p.id === planActuel
-                    const prixTotal = p.prix * duree
+                    const remise = REMISES_DUREE[duree]
+                    const prixMensuelRemise = Math.round(p.prix * (1 - remise / 100))
+                    const prixTotal = prixMensuelRemise * duree
                     const fonctionnalites: string[] =
                       p.id === 'gratuit'
                         ? ['1 pressing', '20 tickets / mois', 'Tableau de bord', 'Gestion clients']
@@ -682,16 +694,20 @@ export default function ParametresPage() {
                               <p className="text-sm font-bold text-pressci-dark">Gratuit</p>
                             ) : (
                               <div>
-                                <p className="text-sm font-bold text-pressci-dark">
-                                  {formatFCFA(prixTotal)}
-                                  {duree > 1 && (
-                                    <span className="ml-1 text-xs font-normal text-gray-500">
-                                      ({duree} × {formatFCFA(p.prix)}/mois)
+                                <div className="flex items-baseline gap-1.5">
+                                  {remise > 0 && (
+                                    <span className="text-xs text-gray-300 line-through">
+                                      {formatFCFA(p.prix)}/mois
                                     </span>
                                   )}
-                                  {duree === 1 && (
-                                    <span className="ml-1 text-xs font-normal text-gray-500">/ mois</span>
-                                  )}
+                                  <span className="text-sm font-bold text-pressci-dark">
+                                    {formatFCFA(prixMensuelRemise)}/mois
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {duree > 1
+                                    ? `Total : ${formatFCFA(prixTotal)} / ${duree === 12 ? 'an' : `${duree} mois`}`
+                                    : `${formatFCFA(prixTotal)} / mois`}
                                 </p>
                               </div>
                             )}

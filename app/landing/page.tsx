@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react'
 import React, { useState } from 'react'
+import { REMISES_DUREE } from '@/types'
 
 /* ─── Données des plans ─────────────────────────────────────────────────── */
 
@@ -227,11 +228,11 @@ function CrossIcon() {
 
 /* ─── Composant principal ───────────────────────────────────────────────── */
 
-const PERIODES: Array<{ duree: 1 | 3 | 6 | 12; label: string; remise?: boolean }> = [
+const PERIODES: Array<{ duree: 1 | 3 | 6 | 12; label: string }> = [
   { duree: 1, label: '1 mois' },
   { duree: 3, label: '3 mois' },
   { duree: 6, label: '6 mois' },
-  { duree: 12, label: '1 an', remise: true },
+  { duree: 12, label: '1 an' },
 ]
 
 export default function LandingPage() {
@@ -544,32 +545,36 @@ export default function LandingPage() {
 
             {/* Sélecteur de période */}
             <div className="inline-grid grid-cols-4 gap-1 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm">
-              {PERIODES.map(({ duree: d, label, remise }) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDuree(d)}
-                  className={`relative rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-                    duree === d
-                      ? 'bg-pressci-primary text-white shadow-sm'
-                      : 'text-gray-500 hover:text-gray-800'
-                  }`}
-                >
-                  {label}
-                  {remise && (
-                    <span className={`absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${duree === d ? 'bg-pressci-accent text-pressci-dark' : 'bg-green-100 text-green-700'}`}>
-                      −20%
-                    </span>
-                  )}
-                </button>
-              ))}
+              {PERIODES.map(({ duree: d, label }) => {
+                const pct = REMISES_DUREE[d]
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDuree(d)}
+                    className={`relative rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                      duree === d
+                        ? 'bg-pressci-primary text-white shadow-sm'
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    {label}
+                    {pct > 0 && (
+                      <span className={`absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${duree === d ? 'bg-pressci-accent text-pressci-dark' : 'bg-green-100 text-green-700'}`}>
+                        −{pct}%
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {PLANS_LANDING.map((plan) => {
-              const prixMensuel = duree === 12 ? plan.prix_annuel : plan.prix_mensuel
-              const prixTotal = prixMensuel * duree
+              const remise = REMISES_DUREE[duree]
+              const prixMensuelRemise = Math.round(plan.prix_mensuel * (1 - remise / 100))
+              const prixTotal = prixMensuelRemise * duree
               return (
                 <div
                   key={plan.id}
@@ -596,8 +601,13 @@ export default function LandingPage() {
                     </p>
                     <div className="mt-4">
                       <div className="flex items-end gap-1">
+                        {plan.prix_mensuel > 0 && remise > 0 && (
+                          <span className={`mb-1.5 text-sm line-through ${plan.accentue ? 'text-pressci-light/40' : 'text-gray-300'}`}>
+                            {formatFCFA(plan.prix_mensuel)}
+                          </span>
+                        )}
                         <span className={`text-3xl font-extrabold ${plan.accentue ? 'text-white' : 'text-gray-900'}`}>
-                          {plan.prix_mensuel === 0 ? 'Gratuit' : formatFCFA(prixMensuel)}
+                          {plan.prix_mensuel === 0 ? 'Gratuit' : formatFCFA(prixMensuelRemise)}
                         </span>
                         {plan.prix_mensuel > 0 && (
                           <span className={`mb-1 text-xs ${plan.accentue ? 'text-pressci-light/60' : 'text-gray-400'}`}>

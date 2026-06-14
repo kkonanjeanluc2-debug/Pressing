@@ -1,5 +1,5 @@
 import { telephoneInternational } from '@/lib/utils'
-import type { Plan } from '@/types'
+import { REMISES_DUREE, type Plan } from '@/types'
 import { createHmac, timingSafeEqual } from 'crypto'
 
 /**
@@ -68,7 +68,8 @@ export async function initierPaiement(
     return { succes: false, erreur: 'Configuration GeniusPay manquante' }
   }
 
-  const montantTotal = PRIX_PLANS[plan] * duree
+  const remise = REMISES_DUREE[duree as keyof typeof REMISES_DUREE] ?? 0
+  const montantTotal = Math.round(PRIX_PLANS[plan] * duree * (1 - remise / 100))
   const nomPlan = plan === 'pro' ? 'Pro' : plan === 'business' ? 'Business' : 'Réseau'
   const descDuree = duree === 1 ? '1 mois' : `${duree} mois`
 

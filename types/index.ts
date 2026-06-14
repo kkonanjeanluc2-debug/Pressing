@@ -225,6 +225,14 @@ export interface PlanInfo {
   limite_pressings: number | null
 }
 
+/** Remise (%) appliquée selon la durée d'engagement. Source unique. */
+export const REMISES_DUREE: Record<1 | 3 | 6 | 12, number> = {
+  1: 0,
+  3: 5,
+  6: 10,
+  12: 20,
+}
+
 export const PLANS: PlanInfo[] = [
   {
     id: 'gratuit',
