@@ -224,8 +224,9 @@ export default function ParametresPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan }),
       })
-      const data = (await res.json()) as { succes: boolean; url?: string; erreur?: string }
+      const data = (await res.json()) as { succes: boolean; url?: string; reference?: string; erreur?: string }
       if (data.succes && data.url) {
+        if (data.reference) localStorage.setItem('pressci_pending_ref', data.reference)
         window.location.href = data.url
         return
       }

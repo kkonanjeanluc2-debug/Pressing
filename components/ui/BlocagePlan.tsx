@@ -20,8 +20,9 @@ export default function BlocagePlan({ planRequis, fonctionnalite }: BlocagePlanP
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: planRequis }),
       })
-      const data = (await res.json()) as { succes: boolean; url?: string }
+      const data = (await res.json()) as { succes: boolean; url?: string; reference?: string }
       if (data.succes && data.url) {
+        if (data.reference) localStorage.setItem('pressci_pending_ref', data.reference)
         window.location.href = data.url
         return
       }

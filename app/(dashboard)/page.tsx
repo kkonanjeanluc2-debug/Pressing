@@ -26,41 +26,74 @@ export default function DashboardPage() {
   >(null)
   const [paiementEnCours, setPaiementEnCours] = useState(false)
 
-  // Retour de paiement GeniusPay : afficher la confirmation d'abonnement.
-  // Le webhook peut mettre quelques secondes : on revérifie plusieurs fois.
+  // Retour de paiement GeniusPay : activer l'abonnement via l'API de vérification.
+  // On utilise la référence GeniusPay stockée dans localStorage avant le redirect.
+  // Si la référence est absente (cas rare), on scrute la DB en fallback.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('paiement') !== 'succes') return
     window.history.replaceState({}, '', '/')
 
+    // Lire et supprimer la référence stockée avant redirect
+    const reference = localStorage.getItem('pressci_pending_ref')
+    if (reference) localStorage.removeItem('pressci_pending_ref')
+
     let annule = false
     let tentatives = 0
-    async function verifierActivation() {
-      tentatives++
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user || annule) return
-      const { data } = await supabase
-        .from('abonnements')
-        .select('plan')
-        .eq('owner_id', user.id)
-        .eq('statut', 'actif')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
 
+    async function activerViaPaiement() {
       if (annule) return
-      if (data?.plan === 'pro' || data?.plan === 'reseau') {
-        setRetourPaiement(data.plan as 'pro' | 'reseau')
-        viderCache()
-      } else if (tentatives < 6) {
-        setRetourPaiement('en_attente')
-        setTimeout(() => void verifierActivation(), 3000)
+      setRetourPaiement('en_attente')
+
+      // Voie principale : vérification directe auprès de GeniusPay
+      if (reference) {
+        try {
+          const res = await fetch('/api/abonnement/verifier', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reference }),
+          })
+          const data = (await res.json()) as { succes: boolean; plan?: string }
+          if (!annule && data.succes && (data.plan === 'pro' || data.plan === 'reseau')) {
+            setRetourPaiement(data.plan as 'pro' | 'reseau')
+            viderCache()
+            return
+          }
+        } catch {
+          // réseau indisponible → fallback scrutation DB
+        }
       }
+
+      // Fallback : scruter la DB (utile si le webhook a activé mais la référence
+      // n'était pas disponible, ou si verifier a échoué temporairement)
+      async function scruter() {
+        tentatives++
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user || annule) return
+        const { data } = await supabase
+          .from('abonnements')
+          .select('plan')
+          .eq('owner_id', user.id)
+          .eq('statut', 'actif')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (annule) return
+        if (data?.plan === 'pro' || data?.plan === 'reseau') {
+          setRetourPaiement(data.plan as 'pro' | 'reseau')
+          viderCache()
+        } else if (tentatives < 6) {
+          setTimeout(() => void scruter(), 3000)
+        }
+      }
+      void scruter()
     }
-    void verifierActivation()
+
+    void activerViaPaiement()
     return () => {
       annule = true
     }
@@ -77,8 +110,12 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: 'pro' }),
       })
-      const data = (await res.json()) as { succes: boolean; url?: string }
+      const data = (await res.json()) as { succes: boolean; url?: string; reference?: string }
       if (data.succes && data.url) {
+        // Stocker la référence pour la vérification au retour de paiement
+        if (data.reference) {
+          localStorage.setItem('pressci_pending_ref', data.reference)
+        }
         window.location.href = data.url
         return
       }
