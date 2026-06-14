@@ -91,11 +91,17 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   }
 
   const { error } = await admin.auth.admin.updateUserById(body.user_id, {
-    ban_duration: body.actif ? 'none' : '876000h', // none = débloquer, durée très longue = bloquer
+    ban_duration: body.actif ? 'none' : '876000h',
   })
 
   if (error) {
     return NextResponse.json({ succes: false, erreur: error.message }, { status: 500 })
+  }
+
+  // Quand on désactive : déconnecter toutes les sessions actives immédiatement
+  // pour ne pas attendre l'expiration naturelle du JWT (jusqu'à 1 heure)
+  if (!body.actif) {
+    await admin.auth.admin.signOut(body.user_id, 'global')
   }
 
   return NextResponse.json({ succes: true })
