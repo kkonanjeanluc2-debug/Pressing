@@ -199,22 +199,23 @@ export default function CaissePage() {
             {proprietaire?.telephone && (
               <p className="text-xs text-pressci-light/80">Tél : {proprietaire.telephone}</p>
             )}
-            {pressingSelectionne ? (
+            {pressingSelectionne && (
               <p className="mt-1 text-sm font-semibold text-pressci-light">
-                Pressing : {pressingSelectionne.nom}
-                {[pressingSelectionne.adresse, pressingSelectionne.commune]
-                  .filter(Boolean)
-                  .join(', ')
+                {pressingSelectionne.nom}
+                {[pressingSelectionne.adresse, pressingSelectionne.commune].filter(Boolean).join(', ')
                   ? ` — ${[pressingSelectionne.adresse, pressingSelectionne.commune].filter(Boolean).join(', ')}`
                   : ''}
-                {pressingSelectionne.telephone ? ` — ${pressingSelectionne.telephone}` : ''}
-              </p>
-            ) : (
-              <p className="mt-1 text-sm text-pressci-light/90">
-                {proprietaire ? `Pressings (${pressings.length}) : ` : ''}
-                {pressings.map((p) => p.nom).join(' · ')}
               </p>
             )}
+            <p className="mt-1 text-sm text-pressci-light/90">
+              {periodeActive === 'perso'
+                ? `Période du ${formatDate(new Date(dateDebut + 'T00:00:00'))} au ${formatDate(new Date(dateFin + 'T00:00:00'))}`
+                : periodeActive === 'jour'
+                ? `Caisse du ${formatDate(new Date())}`
+                : periodeActive === 'semaine'
+                ? `7 derniers jours (au ${formatDate(new Date())})`
+                : `Mois de ${new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`}
+            </p>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold uppercase tracking-wide text-pressci-accent">
