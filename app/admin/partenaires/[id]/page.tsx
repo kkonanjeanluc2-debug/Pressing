@@ -3,7 +3,7 @@
 import Card from '@/components/ui/Card'
 import { formatDateCourte, formatFCFA } from '@/lib/utils'
 import Link from 'next/link'
-import { use, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { DetailPartenaire, VersementLigne } from '@/app/api/admin/partenaires/[id]/route'
 import type { InscritPartenaire } from '@/app/api/partenaire/inscrits/route'
 
@@ -31,9 +31,9 @@ function formatDateHeure(iso: string): string {
 export default function AdminPartenaireDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }) {
-  const { id } = use(params)
+  const { id } = params
   const [detail, setDetail] = useState<DetailPartenaire | null>(null)
   const [chargement, setChargement] = useState(true)
   const [erreur, setErreur] = useState<string | null>(null)
