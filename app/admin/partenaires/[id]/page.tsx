@@ -4,7 +4,25 @@ import Card from '@/components/ui/Card'
 import { formatDateCourte, formatFCFA } from '@/lib/utils'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import type { DetailPartenaire, VersementLigne } from '@/app/api/admin/partenaires/[id]/route'
+import type { DetailPartenaire, ModePaiementVersement, VersementLigne } from '@/app/api/admin/partenaires/[id]/route'
+
+const MODES_PAIEMENT: { value: ModePaiementVersement; label: string; icon: string }[] = [
+  { value: 'wave',         label: 'Wave',         icon: '🌊' },
+  { value: 'orange_money', label: 'Orange Money',  icon: '🟠' },
+  { value: 'mtn_money',   label: 'MTN Money',     icon: '🟡' },
+  { value: 'moov_money',  label: 'Moov Money',    icon: '🔵' },
+  { value: 'banque',      label: 'Virement bancaire', icon: '🏦' },
+  { value: 'cash',        label: 'Espèces',        icon: '💵' },
+]
+
+const LABEL_MODE: Record<ModePaiementVersement, string> = {
+  wave: 'Wave',
+  orange_money: 'Orange Money',
+  mtn_money: 'MTN Money',
+  moov_money: 'Moov Money',
+  banque: 'Virement bancaire',
+  cash: 'Espèces',
+}
 import type { InscritPartenaire } from '@/app/api/partenaire/inscrits/route'
 
 const BADGE_PLAN: Record<string, string> = {
@@ -41,6 +59,7 @@ export default function AdminPartenaireDetailPage({
   /* ── Modale versement ── */
   const [modaleVersement, setModaleVersement] = useState(false)
   const [montant, setMontant] = useState('')
+  const [modePaiement, setModePaiement] = useState<ModePaiementVersement>('wave')
   const [versePar, setVersePar] = useState('')
   const [commentaire, setCommentaire] = useState('')
   const [versementEnCours, setVersementEnCours] = useState(false)
@@ -63,6 +82,7 @@ export default function AdminPartenaireDetailPage({
 
   function ouvrirModale() {
     setMontant('')
+    setModePaiement('wave')
     setVersePar('')
     setCommentaire('')
     setVersementErreur(null)
@@ -84,7 +104,7 @@ export default function AdminPartenaireDetailPage({
     const res = await fetch(`/api/admin/partenaires/${id}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ montant: m, verse_par: versePar, commentaire }),
+      body: JSON.stringify({ montant: m, mode_paiement: modePaiement, verse_par: versePar, commentaire }),
     })
     const data = (await res.json()) as { succes: boolean; erreur?: string }
     if (!data.succes) {
@@ -323,6 +343,7 @@ export default function AdminPartenaireDetailPage({
                 <tr className="border-y border-gray-100 bg-gray-50 text-left text-xs uppercase text-gray-400">
                   <th className="px-5 py-3 font-semibold">Date</th>
                   <th className="px-5 py-3 text-right font-semibold">Montant</th>
+                  <th className="px-5 py-3 font-semibold">Mode</th>
                   <th className="px-5 py-3 font-semibold">Versé par</th>
                   <th className="px-5 py-3 font-semibold">Commentaire</th>
                 </tr>
@@ -333,6 +354,9 @@ export default function AdminPartenaireDetailPage({
                     <td className="px-5 py-3 text-gray-500">{formatDateHeure(v.created_at)}</td>
                     <td className="px-5 py-3 text-right font-bold text-green-700">
                       {formatFCFA(v.montant)}
+                    </td>
+                    <td className="px-5 py-3 text-gray-600">
+                      {LABEL_MODE[v.mode_paiement] ?? v.mode_paiement}
                     </td>
                     <td className="px-5 py-3 font-semibold text-gray-700">{v.verse_par}</td>
                     <td className="px-5 py-3 text-gray-500">{v.commentaire ?? '—'}</td>
@@ -389,6 +413,24 @@ export default function AdminPartenaireDetailPage({
                     Remplir avec le montant restant ({formatFCFA(commissions.a_verser)})
                   </button>
                 )}
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-medium text-gray-700">
+                  Mode de paiement *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {MODES_PAIEMENT.map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => setModePaiement(m.value)}
+                      className={`flex flex-col items-center gap-1 rounded-xl border-2 py-2.5 text-xs font-semibold transition-all ${modePaiement === m.value ? 'border-pressci-primary bg-pressci-light text-pressci-primary' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                    >
+                      <span className="text-lg">{m.icon}</span>
+                      <span className="leading-tight text-center">{m.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-700">

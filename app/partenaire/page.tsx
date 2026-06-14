@@ -310,6 +310,7 @@ export default function PartenaireDashboardPage() {
                 <tr className="border-y border-gray-100 bg-gray-50 text-left text-xs uppercase text-gray-400">
                   <th className="px-5 py-3 font-semibold">Date</th>
                   <th className="px-5 py-3 text-right font-semibold">Montant</th>
+                  <th className="px-5 py-3 font-semibold">Mode</th>
                   <th className="px-5 py-3 font-semibold">Commentaire</th>
                 </tr>
               </thead>
@@ -319,6 +320,9 @@ export default function PartenaireDashboardPage() {
                     <td className="px-5 py-3 text-gray-500">{formatDateHeure(v.created_at)}</td>
                     <td className="px-5 py-3 text-right font-bold text-green-700">
                       +{formatFCFA(v.montant)}
+                    </td>
+                    <td className="px-5 py-3 text-gray-600">
+                      {({ wave: 'Wave', orange_money: 'Orange Money', mtn_money: 'MTN Money', moov_money: 'Moov Money', banque: 'Banque', cash: 'Espèces' } as Record<string, string>)[v.mode_paiement] ?? v.mode_paiement}
                     </td>
                     <td className="px-5 py-3 text-gray-500">{v.commentaire ?? '—'}</td>
                   </tr>

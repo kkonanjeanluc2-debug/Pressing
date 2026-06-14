@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 export interface VersementPartenaire {
   id: string
   montant: number
+  mode_paiement: string
   commentaire: string | null
   verse_par: string
   created_at: string
@@ -35,7 +36,7 @@ export async function GET(): Promise<NextResponse> {
 
   const { data: versements } = await admin
     .from('versements_partenaires')
-    .select('id, montant, commentaire, verse_par, created_at')
+    .select('id, montant, mode_paiement, commentaire, verse_par, created_at')
     .eq('partenaire_id', partenaire.id)
     .order('created_at', { ascending: false })
 

@@ -3,9 +3,12 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import type { InscritPartenaire } from '@/app/api/partenaire/inscrits/route'
 
+export type ModePaiementVersement = 'cash' | 'wave' | 'orange_money' | 'mtn_money' | 'moov_money' | 'banque'
+
 export interface VersementLigne {
   id: string
   montant: number
+  mode_paiement: ModePaiementVersement
   commentaire: string | null
   verse_par: string
   created_at: string
@@ -77,7 +80,7 @@ export async function GET(
       .not('montant', 'is', null),
     admin
       .from('versements_partenaires')
-      .select('id, montant, commentaire, verse_par, created_at')
+      .select('id, montant, mode_paiement, commentaire, verse_par, created_at')
       .eq('partenaire_id', params.id)
       .order('created_at', { ascending: false }),
   ])
@@ -140,15 +143,21 @@ export async function POST(
 
   const body = (await request.json()) as {
     montant: number
+    mode_paiement: ModePaiementVersement
     commentaire?: string
     verse_par: string
   }
+
+  const MODES_VALIDES: ModePaiementVersement[] = ['cash', 'wave', 'orange_money', 'mtn_money', 'moov_money', 'banque']
 
   if (!body.montant || Number(body.montant) <= 0) {
     return NextResponse.json({ succes: false, erreur: 'Montant invalide' }, { status: 400 })
   }
   if (!body.verse_par?.trim()) {
     return NextResponse.json({ succes: false, erreur: 'Nom du verseur requis' }, { status: 400 })
+  }
+  if (!body.mode_paiement || !MODES_VALIDES.includes(body.mode_paiement)) {
+    return NextResponse.json({ succes: false, erreur: 'Mode de paiement invalide' }, { status: 400 })
   }
 
   let admin: ReturnType<typeof createAdminClient>
@@ -169,6 +178,7 @@ export async function POST(
   const { error } = await admin.from('versements_partenaires').insert({
     partenaire_id: params.id,
     montant: Math.round(Number(body.montant)),
+    mode_paiement: body.mode_paiement,
     commentaire: body.commentaire?.trim() || null,
     verse_par: body.verse_par.trim(),
   })
