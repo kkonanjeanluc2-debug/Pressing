@@ -260,7 +260,25 @@ export default function ParametresPage() {
     }
     const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(path)
     const urlAvecTimestamp = `${publicUrl}?t=${Date.now()}`
-    await supabase.from('profils').upsert({ user_id: userId, logo_url: urlAvecTimestamp })
+
+    // Upsert avec toutes les colonnes NOT NULL pour éviter l'échec silencieux
+    // si le profil n'a pas encore été sauvegardé via le formulaire.
+    const { error: profilError } = await supabase.from('profils').upsert({
+      user_id: userId,
+      logo_url: urlAvecTimestamp,
+      nom: nomGerant.trim() || 'Propriétaire',
+      type_compte: typeCompte,
+      rccm: rccm.trim() || null,
+      ncc: ncc.trim() || null,
+      telephone: telGerant.trim() || null,
+    })
+
+    if (profilError) {
+      setErreur('Logo uploadé mais non enregistré : ' + profilError.message)
+      setUploadEnCours(false)
+      return
+    }
+
     setLogoUrl(urlAvecTimestamp)
     notifier('Logo mis à jour ✅ — il apparaîtra en en-tête de vos documents.')
     setUploadEnCours(false)
