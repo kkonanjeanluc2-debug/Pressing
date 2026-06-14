@@ -15,7 +15,7 @@ import React, { useState } from 'react'
 
 /* ─── Données des plans ─────────────────────────────────────────────────── */
 
-type PlanId = 'gratuit' | 'pro' | 'reseau'
+type PlanId = 'gratuit' | 'pro' | 'business' | 'reseau'
 
 interface PlanData {
   id: PlanId
@@ -30,7 +30,7 @@ interface PlanData {
   cta: string
 }
 
-const PLANS: PlanData[] = [
+const PLANS_LANDING: PlanData[] = [
   {
     id: 'gratuit',
     nom: 'Gratuit',
@@ -48,7 +48,6 @@ const PLANS: PlanData[] = [
       { texte: 'Application mobile (PWA)', inclus: true },
       { texte: 'Tickets illimités', inclus: false },
       { texte: 'Gestion des agents', inclus: false },
-      { texte: 'Statistiques avancées', inclus: false },
       { texte: 'Comptabilité SYSCOHADA', inclus: false },
       { texte: 'Notifications WhatsApp', inclus: false },
       { texte: 'Multi-pressings', inclus: false },
@@ -67,17 +66,35 @@ const PLANS: PlanData[] = [
     fonctionnalites: [
       { texte: '1 pressing', inclus: true },
       { texte: 'Tickets illimités', inclus: true },
-      { texte: 'Gestion des agents (avec permissions)', inclus: true },
-      { texte: 'Caisse par période', inclus: true },
+      { texte: 'Gestion des agents', inclus: true },
       { texte: 'Statistiques complètes', inclus: true },
       { texte: 'Comptabilité SYSCOHADA', inclus: true },
-      { texte: 'Catalogue vêtements partagé', inclus: true },
-      { texte: 'Notifications WhatsApp clients', inclus: true },
-      { texte: 'Tickets PDF A4 + reçu 80 mm', inclus: true },
-      { texte: "Logo d'établissement personnalisé", inclus: true },
+      { texte: 'Notifications WhatsApp', inclus: true },
+      { texte: 'PDF + logo personnalisé', inclus: true },
       { texte: 'Multi-pressings', inclus: false },
     ],
     cta: 'Essayer le Pro',
+  },
+  {
+    id: 'business',
+    nom: 'Business',
+    prix_mensuel: 8000,
+    prix_annuel: 6400,
+    description: 'Pour plusieurs pressings',
+    badge: null,
+    accentue: false,
+    couleurBadge: '',
+    fonctionnalites: [
+      { texte: '3 pressings', inclus: true },
+      { texte: 'Tickets illimités', inclus: true },
+      { texte: 'Gestion des agents', inclus: true },
+      { texte: 'Statistiques complètes', inclus: true },
+      { texte: 'Comptabilité SYSCOHADA', inclus: true },
+      { texte: 'Notifications WhatsApp', inclus: true },
+      { texte: 'PDF + logo personnalisé', inclus: true },
+      { texte: 'Tableau de bord multi-pressings', inclus: true },
+    ],
+    cta: 'Essayer le Business',
   },
   {
     id: 'reseau',
@@ -91,7 +108,7 @@ const PLANS: PlanData[] = [
     fonctionnalites: [
       { texte: 'Pressings illimités', inclus: true },
       { texte: 'Tickets illimités', inclus: true },
-      { texte: 'Tout le plan Pro inclus', inclus: true },
+      { texte: 'Tout le plan Business inclus', inclus: true },
       { texte: 'Vue consolidée multi-pressings', inclus: true },
       { texte: 'Tableau de bord centralisé', inclus: true },
       { texte: 'Rapports par pressing', inclus: true },
@@ -210,8 +227,15 @@ function CrossIcon() {
 
 /* ─── Composant principal ───────────────────────────────────────────────── */
 
+const PERIODES = [
+  { duree: 1, label: '1 mois' },
+  { duree: 3, label: '3 mois' },
+  { duree: 6, label: '6 mois' },
+  { duree: 12, label: '1 an', remise: true },
+] as const
+
 export default function LandingPage() {
-  const [annuel, setAnnuel] = useState(false)
+  const [duree, setDuree] = useState<1 | 3 | 6 | 12>(1)
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900">
@@ -509,44 +533,47 @@ export default function LandingPage() {
 
       {/* ══════════════ TARIFS ══════════════ */}
       <section id="tarifs" className="bg-gray-50 py-20 lg:py-28">
-        <div className="mx-auto max-w-6xl px-5">
+        <div className="mx-auto max-w-7xl px-5">
           <div className="mx-auto mb-10 max-w-2xl text-center">
             <h2 className="mb-4 text-3xl font-extrabold text-gray-900 sm:text-4xl">
               Des tarifs clairs, sans surprise
             </h2>
             <p className="mb-8 text-gray-500">
-              Commencez gratuitement. Passez au Pro quand vous êtes prêt.
+              Commencez gratuitement. Choisissez votre durée d'engagement.
             </p>
 
-            {/* Toggle mensuel / annuel */}
-            <div className="inline-flex items-center gap-3 rounded-full border border-gray-200 bg-white p-1">
-              <button
-                type="button"
-                onClick={() => setAnnuel(false)}
-                className={`rounded-full px-5 py-2 text-sm font-semibold transition ${!annuel ? 'bg-pressci-primary text-white shadow-sm' : 'text-gray-500'}`}
-              >
-                Mensuel
-              </button>
-              <button
-                type="button"
-                onClick={() => setAnnuel(true)}
-                className={`rounded-full px-5 py-2 text-sm font-semibold transition ${annuel ? 'bg-pressci-primary text-white shadow-sm' : 'text-gray-500'}`}
-              >
-                Annuel
-                <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-                  −20%
-                </span>
-              </button>
+            {/* Sélecteur de période */}
+            <div className="inline-grid grid-cols-4 gap-1 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-sm">
+              {PERIODES.map(({ duree: d, label, remise }) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDuree(d)}
+                  className={`relative rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                    duree === d
+                      ? 'bg-pressci-primary text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  {label}
+                  {remise && (
+                    <span className={`absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-0.5 text-[9px] font-bold ${duree === d ? 'bg-pressci-accent text-pressci-dark' : 'bg-green-100 text-green-700'}`}>
+                      −20%
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            {PLANS.map((plan) => {
-              const prix = annuel ? plan.prix_annuel : plan.prix_mensuel
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {PLANS_LANDING.map((plan) => {
+              const prixMensuel = duree === 12 ? plan.prix_annuel : plan.prix_mensuel
+              const prixTotal = prixMensuel * duree
               return (
                 <div
                   key={plan.id}
-                  className={`relative flex flex-col rounded-2xl border p-8 ${
+                  className={`relative flex flex-col rounded-2xl border p-6 ${
                     plan.accentue
                       ? 'border-pressci-primary bg-pressci-dark shadow-2xl shadow-pressci-dark/30'
                       : 'border-gray-200 bg-white'
@@ -560,36 +587,38 @@ export default function LandingPage() {
                     </div>
                   )}
 
-                  <div className="mb-6">
-                    <h3 className={`text-xl font-extrabold ${plan.accentue ? 'text-white' : 'text-gray-900'}`}>
+                  <div className="mb-5">
+                    <h3 className={`text-lg font-extrabold ${plan.accentue ? 'text-white' : 'text-gray-900'}`}>
                       {plan.nom}
                     </h3>
-                    <p className={`mt-1 text-sm ${plan.accentue ? 'text-pressci-light/70' : 'text-gray-500'}`}>
+                    <p className={`mt-1 text-xs ${plan.accentue ? 'text-pressci-light/70' : 'text-gray-500'}`}>
                       {plan.description}
                     </p>
-                    <div className="mt-5 flex items-end gap-2">
-                      <span className={`text-4xl font-extrabold ${plan.accentue ? 'text-white' : 'text-gray-900'}`}>
-                        {prix === 0 ? 'Gratuit' : formatFCFA(prix)}
-                      </span>
-                      {prix > 0 && (
-                        <span className={`mb-1 text-sm ${plan.accentue ? 'text-pressci-light/60' : 'text-gray-400'}`}>
-                          / mois
+                    <div className="mt-4">
+                      <div className="flex items-end gap-1">
+                        <span className={`text-3xl font-extrabold ${plan.accentue ? 'text-white' : 'text-gray-900'}`}>
+                          {plan.prix_mensuel === 0 ? 'Gratuit' : formatFCFA(prixMensuel)}
                         </span>
+                        {plan.prix_mensuel > 0 && (
+                          <span className={`mb-1 text-xs ${plan.accentue ? 'text-pressci-light/60' : 'text-gray-400'}`}>
+                            / mois
+                          </span>
+                        )}
+                      </div>
+                      {plan.prix_mensuel > 0 && duree > 1 && (
+                        <p className={`mt-1 text-xs ${plan.accentue ? 'text-pressci-accent' : 'text-pressci-primary'}`}>
+                          Total : {formatFCFA(prixTotal)} / {duree === 12 ? 'an' : `${duree} mois`}
+                        </p>
                       )}
                     </div>
-                    {annuel && prix > 0 && (
-                      <p className={`mt-1 text-xs ${plan.accentue ? 'text-pressci-accent' : 'text-pressci-primary'}`}>
-                        Facturé {formatFCFA(prix * 12)} / an
-                      </p>
-                    )}
                   </div>
 
-                  <ul className="mb-8 flex-1 space-y-3">
+                  <ul className="mb-6 flex-1 space-y-2">
                     {plan.fonctionnalites.map((f) => (
-                      <li key={f.texte} className="flex items-start gap-3">
+                      <li key={f.texte} className="flex items-start gap-2">
                         {f.inclus ? <CheckIcon /> : <CrossIcon />}
                         <span
-                          className={`text-sm ${
+                          className={`text-xs ${
                             f.inclus
                               ? plan.accentue ? 'text-pressci-light/90' : 'text-gray-700'
                               : 'text-gray-300'
@@ -603,7 +632,7 @@ export default function LandingPage() {
 
                   <Link
                     href="/register"
-                    className={`rounded-full py-3 text-center text-sm font-bold transition ${
+                    className={`rounded-full py-2.5 text-center text-sm font-bold transition ${
                       plan.accentue
                         ? 'bg-pressci-accent text-pressci-dark hover:bg-pressci-light'
                         : 'border border-pressci-primary text-pressci-primary hover:bg-pressci-light'
