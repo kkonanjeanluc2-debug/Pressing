@@ -58,11 +58,11 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (user) {
-    // Compte désactivé par l'admin (compte_actif=false dans user_metadata).
-    // getUser() retourne toujours les métadonnées fraîches depuis le serveur,
-    // donc ce check est immédiat même si le JWT est encore valide.
+    // Compte désactivé : bloquer l'accès à toutes les routes protégées.
+    // On laisse passer /login et les autres routes publiques pour éviter
+    // la boucle de redirection (l'utilisateur reste connecté côté cookie).
     const meta = user.user_metadata as Record<string, unknown> | undefined
-    if (meta?.compte_actif === false) {
+    if (meta?.compte_actif === false && !estRoutePublique && !estRouteApi) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
@@ -92,7 +92,8 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     }
 
     // Utilisateur ordinaire connecté → pas d'accès aux pages login/register
-    if (estRoutePublique) {
+    // Exception : compte désactivé → rester sur /login (déjà filtré plus haut)
+    if (estRoutePublique && meta?.compte_actif !== false) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
