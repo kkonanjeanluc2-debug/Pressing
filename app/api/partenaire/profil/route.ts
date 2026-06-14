@@ -20,6 +20,9 @@ export async function GET(): Promise<NextResponse> {
 
   if (error) return NextResponse.json({ succes: false, erreur: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ succes: false, erreur: 'Non partenaire' }, { status: 404 })
+  if ((data.statut as string) !== 'actif') {
+    return NextResponse.json({ succes: false, erreur: 'Compte partenaire suspendu.' }, { status: 403 })
+  }
 
   return NextResponse.json({ succes: true, partenaire: data })
 }

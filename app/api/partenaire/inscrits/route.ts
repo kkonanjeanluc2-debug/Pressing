@@ -35,12 +35,15 @@ export async function GET(): Promise<NextResponse> {
   // 1. Récupérer le partenaire connecté
   const { data: partenaire } = await admin
     .from('partenaires')
-    .select('id, code_parrainage, taux_commission')
+    .select('id, code_parrainage, taux_commission, statut')
     .eq('user_id', user.id)
     .maybeSingle()
 
   if (!partenaire) {
     return NextResponse.json({ succes: false, erreur: 'Compte partenaire introuvable.' }, { status: 404 })
+  }
+  if ((partenaire.statut as string) !== 'actif') {
+    return NextResponse.json({ succes: false, erreur: 'Compte partenaire suspendu.' }, { status: 403 })
   }
 
   // 2. Profils des utilisateurs parrainés (comparaison insensible à la casse)

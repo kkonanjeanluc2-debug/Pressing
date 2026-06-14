@@ -40,6 +40,17 @@ export async function GET(): Promise<NextResponse> {
   return NextResponse.json({ succes: true, partenaires: data as PartenaireLigne[] })
 }
 
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function emailValide(e: string): boolean {
+  return RE_EMAIL.test(e.trim()) && e.trim().length <= 254
+}
+
+function tauxValide(t: unknown): boolean {
+  const n = Number(t)
+  return !isNaN(n) && n >= 0 && n <= 100
+}
+
 /** POST /api/admin/partenaires — crée un partenaire + son compte utilisateur */
 export async function POST(request: Request): Promise<NextResponse> {
   if (!(await verifierSuperAdmin())) {
@@ -56,8 +67,17 @@ export async function POST(request: Request): Promise<NextResponse> {
     notes?: string
   }
 
-  if (!body.nom || !body.email || body.taux_commission == null) {
+  if (!body.nom?.trim() || !body.email || body.taux_commission == null) {
     return NextResponse.json({ succes: false, erreur: 'Champs obligatoires manquants' }, { status: 400 })
+  }
+  if (!emailValide(body.email)) {
+    return NextResponse.json({ succes: false, erreur: 'Adresse e-mail invalide' }, { status: 400 })
+  }
+  if (!tauxValide(body.taux_commission)) {
+    return NextResponse.json({ succes: false, erreur: 'Taux de commission invalide (0 – 100)' }, { status: 400 })
+  }
+  if (body.nom.trim().length > 120) {
+    return NextResponse.json({ succes: false, erreur: 'Nom trop long (120 caractères max)' }, { status: 400 })
   }
 
   let admin: ReturnType<typeof createAdminClient>
@@ -151,6 +171,15 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
   if (!body.id) {
     return NextResponse.json({ succes: false, erreur: 'id requis' }, { status: 400 })
+  }
+  if (email !== undefined && !emailValide(email)) {
+    return NextResponse.json({ succes: false, erreur: 'Adresse e-mail invalide' }, { status: 400 })
+  }
+  if (champsTable.taux_commission !== undefined && !tauxValide(champsTable.taux_commission)) {
+    return NextResponse.json({ succes: false, erreur: 'Taux de commission invalide (0 – 100)' }, { status: 400 })
+  }
+  if (champsTable.notes !== undefined && typeof champsTable.notes === 'string' && champsTable.notes.length > 1000) {
+    return NextResponse.json({ succes: false, erreur: 'Notes trop longues (1000 caractères max)' }, { status: 400 })
   }
 
   let admin: ReturnType<typeof createAdminClient>

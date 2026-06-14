@@ -49,6 +49,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const estRoutePublique = ROUTES_PUBLIQUES.some((r) => pathname.startsWith(r))
   const estRouteApi = pathname.startsWith('/api')
   const estRoutePartenaire = pathname.startsWith('/partenaire')
+  const estRouteAdmin = pathname.startsWith('/admin')
 
   // Non connecté → redirection vers /login (sauf routes publiques et API)
   if (!user && !estRoutePublique && !estRouteApi) {
@@ -93,6 +94,21 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
+    }
+
+    // Utilisateur ordinaire → vérifier super-admin pour accéder à /admin
+    if (estRouteAdmin) {
+      const { data: adminRow } = await supabase
+        .from('super_admins')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!adminRow) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        return NextResponse.redirect(url)
+      }
     }
   }
 
