@@ -37,8 +37,32 @@ const withPWA = require('next-pwa')({
   ],
 })
 
+/** Headers de sécurité HTTP appliqués à toutes les routes. */
+const SECURITY_HEADERS = [
+  // Empêche l'intégration dans une iframe (clickjacking)
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  // Empêche le sniffing de type MIME
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  // Limite les infos de provenance transmises aux sites tiers
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  // Désactive les fonctionnalités navigateur inutilisées
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+  // Active le filtrage XSS du navigateur (ancien IE/Chrome, défense en profondeur)
+  { key: 'X-XSS-Protection', value: '1; mode=block' },
+  // Préchargement DNS activé pour les assets Supabase
+  { key: 'X-DNS-Prefetch-Control', value: 'on' },
+]
+
 const nextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: SECURITY_HEADERS,
+      },
+    ]
+  },
 }
 
 module.exports = withPWA(nextConfig)

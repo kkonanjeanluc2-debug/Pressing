@@ -22,6 +22,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ succes: false, erreur: 'Non connecté' }, { status: 401 })
   }
 
+  // Bloquer les agents (role stocké dans user_metadata à la création du compte)
+  // et les partenaires (ils ne peuvent pas souscrire à un plan pressing)
+  const roleUtilisateur = (user.user_metadata?.role as string | undefined) ?? 'proprietaire'
+  if (roleUtilisateur === 'agent' || roleUtilisateur === 'partenaire') {
+    return NextResponse.json({ succes: false, erreur: 'Accès réservé au propriétaire du compte' }, { status: 403 })
+  }
+
   let corps: CorpsRequete
   try {
     corps = (await request.json()) as CorpsRequete

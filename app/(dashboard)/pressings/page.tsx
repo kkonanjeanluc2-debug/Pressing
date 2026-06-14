@@ -2,12 +2,14 @@
 
 import { usePressing } from '@/hooks/usePressing'
 import { usePressingsResume } from '@/hooks/usePressingsResume'
+import { useProfil } from '@/hooks/useProfil'
 import { formatFCFA, formatHeure } from '@/lib/utils'
 import Link from 'next/link'
 
 export default function PressingsPage() {
   const { pressings, chargement } = usePressing()
   const { resumes, chargement: chargementResumes } = usePressingsResume(pressings)
+  const { role } = useProfil()
 
   if (chargement) {
     return (
@@ -28,12 +30,14 @@ export default function PressingsPage() {
             {pressings.length > 1 ? 's' : ''}
           </p>
         </div>
-        <Link
-          href="/pressings/nouveau"
-          className="shrink-0 rounded-card bg-pressci-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-pressci-secondary"
-        >
-          + Nouveau pressing
-        </Link>
+        {role === 'proprietaire' && (
+          <Link
+            href="/pressings/nouveau"
+            className="shrink-0 rounded-card bg-pressci-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-pressci-secondary"
+          >
+            + Nouveau pressing
+          </Link>
+        )}
       </header>
 
       {pressings.length === 0 ? (

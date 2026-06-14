@@ -1,11 +1,33 @@
 'use client'
 
 import CreerPressing from '@/components/onboarding/CreerPressing'
+import { useProfil } from '@/hooks/useProfil'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 export default function NouveauPressingPage() {
   const router = useRouter()
+  const { role, chargement } = useProfil()
+
+  if (chargement) {
+    return (
+      <div className="flex h-[70vh] items-center justify-center">
+        <span className="spinner spinner-dark h-8 w-8" />
+      </div>
+    )
+  }
+
+  if (role !== 'proprietaire') {
+    return (
+      <div className="px-4 py-16 text-center text-gray-600">
+        <p className="mb-2 text-4xl">🔒</p>
+        <p className="font-semibold">Réservé au propriétaire du compte.</p>
+        <Link href="/pressings" className="mt-2 inline-block font-semibold text-pressci-primary">
+          Retour aux pressings
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 pt-5">
