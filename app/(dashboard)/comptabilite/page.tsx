@@ -279,9 +279,6 @@ export default function ComptabilitePage() {
               ) : (
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-accent text-base font-bold text-pressci-dark">P</span>
               )}
-              <span className="text-sm font-semibold text-pressci-accent">
-                Pressing Ivoire
-              </span>
             </div>
             <h1 className="text-2xl font-bold text-white">
               {proprietaire?.nom ??
@@ -299,12 +296,8 @@ export default function ComptabilitePage() {
                   .join(' · ')}
               </p>
             )}
-            {proprietaire && (
-              <p className="text-sm font-semibold text-pressci-light">
-                {pressingSelectionne
-                  ? `Pressing : ${pressingSelectionne.nom}`
-                  : `Pressings (${pressings.length}) : ${pressings.map((p) => p.nom).join(' · ')}`}
-              </p>
+            {proprietaire?.telephone && (
+              <p className="text-sm text-pressci-light/90">Tél : {proprietaire.telephone}</p>
             )}
             <p className="text-sm text-pressci-light/90">
               Période du {formatDate(new Date(`${dateDebut}T00:00:00`))} au{' '}

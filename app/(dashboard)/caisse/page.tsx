@@ -178,9 +178,6 @@ export default function CaissePage() {
               ) : (
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pressci-accent text-base font-bold text-pressci-dark">P</span>
               )}
-              <span className="text-sm font-semibold text-pressci-accent">
-                Pressing Ivoire
-              </span>
             </div>
             {/* Identité du propriétaire (entreprise ou personne physique) */}
             <h1 className="text-2xl font-bold text-white">
