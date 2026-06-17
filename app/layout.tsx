@@ -12,6 +12,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'Pressing Ivoire',
   },
+  icons: {
+    apple: [{ url: '/api/pwa-icon', sizes: '180x180', type: 'image/png' }],
+  },
 }
 
 export const viewport: Viewport = {
