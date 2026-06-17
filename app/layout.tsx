@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: 'Pressing Ivoire — Gestion de pressing',
   description:
     "Gérez votre pressing depuis votre téléphone : dépôts, clients, caisse, notifications. Conçu pour la Côte d'Ivoire.",
-  manifest: '/manifest.json',
+  manifest: '/api/pwa-manifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
