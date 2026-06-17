@@ -19,7 +19,9 @@ export async function GET(): Promise<NextResponse> {
 
       const logoUrl = (profil?.logo_url as string | null)?.split('?')[0]
       if (logoUrl) {
-        iconSrc = logoUrl
+        // Proxy same-origin pour contourner la restriction cross-origin
+        // des icônes PWA sur Chrome Android
+        iconSrc = `/api/pwa-icon?u=${encodeURIComponent(logoUrl)}`
       }
     }
   } catch {
