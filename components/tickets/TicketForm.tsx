@@ -478,7 +478,7 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
 
               {/* Overlay pour fermer le sélecteur de couleur */}
               {ouvertCouleur !== null && (
-                <div className="fixed inset-0 z-10" onClick={() => setOuvertCouleur(null)} />
+                <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setOuvertCouleur(null)} />
               )}
 
               {articles.length === 0 ? (
@@ -488,9 +488,9 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
               ) : (
                 <div className="space-y-2">
                   {articles.map((article, i) => (
-                    <div key={i} className="space-y-0">
-                      <div className="flex items-center gap-2 rounded-card border border-gray-200 p-2.5">
-                        {/* Nom + prix unitaire */}
+                    <div key={i} className="rounded-card border border-gray-200 p-2.5">
+                      {/* Ligne 1 : nom complet + supprimer */}
+                      <div className="mb-2 flex items-start gap-2">
                         <div className="min-w-0 flex-1">
                           {article.type_article === '' ? (
                             <input
@@ -498,89 +498,73 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                               placeholder="Nom de l'article"
                               autoFocus
                               onBlur={(e) => majLigne(i, { type_article: e.target.value })}
-                              className="mb-1 w-full rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-pressci-primary"
+                              className="w-full rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-pressci-primary"
                             />
                           ) : (
-                            <p className="truncate text-sm font-semibold text-gray-800">
+                            <p className="text-sm font-semibold leading-snug text-gray-800">
                               {emojiArticle(article.type_article)} {article.type_article}
-                              {article.couleur && (
-                                <span className="ml-1 text-xs font-normal text-gray-500">
-                                  — {nomCouleur(article.couleur)}
-                                </span>
-                              )}
                             </p>
                           )}
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <input
-                              type="number"
-                              min={0}
-                              value={article.prix_unitaire || ''}
-                              placeholder="Prix"
-                              onChange={(e) =>
-                                majLigne(i, { prix_unitaire: parseInt(e.target.value, 10) || 0 })
-                              }
-                              className="w-20 rounded border border-gray-200 px-1.5 py-0.5 text-xs outline-none focus:border-pressci-primary"
-                              aria-label={`Prix unitaire de ${article.type_article || "l'article"}`}
-                            />
-                            <span>FCFA / pièce</span>
-                          </div>
+                          {article.couleur && (
+                            <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+                              <span
+                                className="inline-block h-3 w-3 shrink-0 rounded-full border border-gray-300"
+                                style={{ backgroundColor: article.couleur }}
+                              />
+                              {nomCouleur(article.couleur)}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => retirerLigne(i)}
+                          aria-label="Retirer l'article"
+                          className="shrink-0 px-1 text-xl text-red-400 active:text-red-600"
+                        >✕</button>
+                      </div>
+
+                      {/* Ligne 2 : prix | couleur | − qté + | sous-total */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            value={article.prix_unitaire || ''}
+                            placeholder="Prix"
+                            onChange={(e) =>
+                              majLigne(i, { prix_unitaire: parseInt(e.target.value, 10) || 0 })
+                            }
+                            className="w-20 rounded border border-gray-200 px-1.5 py-0.5 text-xs outline-none focus:border-pressci-primary"
+                            aria-label={`Prix unitaire de ${article.type_article || "l'article"}`}
+                          />
+                          <span className="text-xs text-gray-400">FCFA</span>
                         </div>
 
                         {/* Bouton couleur */}
-                        <div className="relative z-20 shrink-0">
+                        <div className="shrink-0">
                           <button
                             type="button"
                             onClick={() => setOuvertCouleur(ouvertCouleur === i ? null : i)}
                             title="Couleur du vêtement"
-                            className="flex h-7 w-7 items-center justify-center rounded-full border-2 text-[10px] transition-transform active:scale-90"
+                            className="flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm transition-transform active:scale-90"
                             style={{
                               backgroundColor: article.couleur ?? '#F3F4F6',
                               borderColor: article.couleur ?? '#D1D5DB',
                             }}
                           >
-                            {!article.couleur && <span className="text-gray-400">🎨</span>}
+                            {!article.couleur && <span>🎨</span>}
                           </button>
-
-                          {ouvertCouleur === i && (
-                            <div className="absolute right-0 top-9 z-30 w-52 rounded-card border border-gray-200 bg-white p-2 shadow-xl">
-                              <p className="mb-1.5 text-[10px] font-semibold text-gray-500">Couleur du vêtement</p>
-                              <div className="grid grid-cols-7 gap-1.5">
-                                {/* Effacer */}
-                                <button
-                                  type="button"
-                                  onClick={() => { majLigne(i, { couleur: undefined }); setOuvertCouleur(null) }}
-                                  className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-[9px] text-gray-500"
-                                  title="Aucune couleur"
-                                >✕</button>
-                                {COULEURS_VETEMENT.map((c) => (
-                                  <button
-                                    key={c.hex}
-                                    type="button"
-                                    onClick={() => { majLigne(i, { couleur: c.hex }); setOuvertCouleur(null) }}
-                                    title={c.nom}
-                                    className={`h-6 w-6 rounded-full ${c.contour ? 'border-2 border-gray-300' : 'border border-gray-200'} ${article.couleur === c.hex ? 'ring-2 ring-pressci-primary ring-offset-1' : ''}`}
-                                    style={{ backgroundColor: c.hex }}
-                                  />
-                                ))}
-                              </div>
-                              {article.couleur && (
-                                <p className="mt-1.5 text-center text-[10px] font-semibold text-gray-600">
-                                  {nomCouleur(article.couleur)}
-                                </p>
-                              )}
-                            </div>
-                          )}
                         </div>
 
                         {/* Quantité - / + */}
-                        <div className="flex shrink-0 items-center gap-1">
+                        <div className="ml-auto flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             onClick={() => changerQuantite(i, -1)}
                             aria-label="Diminuer la quantité"
                             className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-lg font-bold text-red-500 active:bg-red-100"
                           >−</button>
-                          <span className="w-8 text-center text-sm font-bold">{article.quantite}</span>
+                          <span className="w-7 text-center text-sm font-bold">{article.quantite}</span>
                           <button
                             type="button"
                             onClick={() => changerQuantite(i, 1)}
@@ -590,20 +574,55 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                         </div>
 
                         {/* Sous-total */}
-                        <span className="w-20 shrink-0 text-right text-sm font-semibold text-gray-800">
+                        <span className="w-16 shrink-0 text-right text-sm font-semibold text-gray-800">
                           {(article.quantite * article.prix_unitaire).toLocaleString('fr-FR')}
                         </span>
-
-                        {/* Retirer */}
-                        <button
-                          type="button"
-                          onClick={() => retirerLigne(i)}
-                          aria-label="Retirer l'article"
-                          className="shrink-0 px-1 text-lg font-bold text-red-500"
-                        >✕</button>
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Sélecteur de couleur — panneau fixe en bas sur mobile */}
+              {ouvertCouleur !== null && (
+                <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-gray-200 bg-white p-5 shadow-2xl sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-1/2 sm:w-72 sm:rounded-2xl sm:border sm:-translate-y-1/2 sm:shadow-xl">
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="text-base font-semibold text-gray-800">Couleur du vêtement</p>
+                    <button
+                      type="button"
+                      onClick={() => setOuvertCouleur(null)}
+                      className="rounded-full px-3 py-1 text-sm text-gray-500 active:bg-gray-100"
+                    >Fermer</button>
+                  </div>
+                  <div className="grid grid-cols-5 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        majLigne(ouvertCouleur, { couleur: undefined })
+                        setOuvertCouleur(null)
+                      }}
+                      className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-sm text-gray-500 active:bg-gray-200"
+                      title="Aucune couleur"
+                    >✕</button>
+                    {COULEURS_VETEMENT.map((c) => (
+                      <button
+                        key={c.hex}
+                        type="button"
+                        onClick={() => {
+                          majLigne(ouvertCouleur, { couleur: c.hex })
+                          setOuvertCouleur(null)
+                        }}
+                        title={c.nom}
+                        className={`h-12 w-12 rounded-full ${c.contour ? 'border-2 border-gray-300' : 'border border-gray-200'} ${articles[ouvertCouleur]?.couleur === c.hex ? 'ring-[3px] ring-pressci-primary ring-offset-2' : ''} active:scale-90 transition-transform`}
+                        style={{ backgroundColor: c.hex }}
+                      />
+                    ))}
+                  </div>
+                  {articles[ouvertCouleur]?.couleur && (
+                    <p className="mt-4 text-center text-sm font-semibold text-pressci-dark">
+                      {nomCouleur(articles[ouvertCouleur].couleur!)}
+                    </p>
+                  )}
                 </div>
               )}
             </Card>
