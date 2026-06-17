@@ -415,23 +415,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
           </>
         )}
 
-        {(ticket.statut === 'nouveau' || ticket.statut === 'en_traitement') &&
-          peut('changer_statut') && (
-          <Button
-            pleineLargeur
-            variante="ghost"
-            chargement={enCours}
-            onClick={() => {
-              if (window.confirm('Annuler ce ticket ? Cette action est définitive.')) {
-                void changerStatut('annule')
-              }
-            }}
-          >
-            Annuler le ticket
-          </Button>
-        )}
-
-        {ticket.statut === 'recupere' && (
+{ticket.statut === 'recupere' && (
           <p className="text-center text-sm text-gray-400">
             Ticket clôturé
             {ticket.date_recuperation
