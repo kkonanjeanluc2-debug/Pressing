@@ -63,6 +63,7 @@ export interface ArticleTicket {
   quantite: number
   prix_unitaire: number
   sous_total: number
+  couleur: string | null
 }
 
 export interface Tarif {
@@ -73,6 +74,7 @@ export interface Tarif {
   type_article: string
   prix_defaut: number
   actif: boolean
+  categorie: 'vetement' | 'forfait'
 }
 
 export interface Abonnement {
@@ -202,6 +204,7 @@ export interface ArticleFormItem {
   type_article: string
   quantite: number
   prix_unitaire: number
+  couleur?: string
 }
 
 export interface NouveauTicketInput {

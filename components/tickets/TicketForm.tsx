@@ -6,10 +6,12 @@ import Input from '@/components/ui/Input'
 import { rechercherClients } from '@/hooks/useClients'
 import { createClient } from '@/lib/supabase/client'
 import {
+  COULEURS_VETEMENT,
   datePrevueDefaut,
   emojiArticle,
   formatFCFA,
   MODE_PAIEMENT_LABELS,
+  nomCouleur,
   normaliserTelephone,
   validerTelephone,
 } from '@/lib/utils'
@@ -66,6 +68,7 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
   const [erreur, setErreur] = useState<string | null>(null)
   const [chargement, setChargement] = useState(false)
   const [limiteAtteinte, setLimiteAtteinte] = useState(false)
+  const [ouvertCouleur, setOuvertCouleur] = useState<number | null>(null)
 
   const montantTotal = articles.reduce((s, a) => s + a.quantite * a.prix_unitaire, 0)
   const nbPieces = articles.reduce((s, a) => s + a.quantite, 0)
@@ -114,9 +117,12 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
 
   // ---- Panier ----
   function ajouterDepuisCatalogue(tarif: Tarif) {
+    setOuvertCouleur(null)
     setArticles((prev) => {
+      // Incrémente la ligne existante sans couleur ; sinon ajoute une nouvelle ligne
+      // (permet plusieurs lignes du même article avec des couleurs différentes)
       const i = prev.findIndex(
-        (a) => a.type_article === tarif.type_article && a.prix_unitaire === tarif.prix_defaut
+        (a) => a.type_article === tarif.type_article && a.prix_unitaire === tarif.prix_defaut && !a.couleur
       )
       if (i >= 0) {
         return prev.map((a, j) => (j === i ? { ...a, quantite: a.quantite + 1 } : a))
@@ -251,6 +257,7 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           quantite: a.quantite,
           prix_unitaire: a.prix_unitaire,
           sous_total: a.quantite * a.prix_unitaire,
+          couleur: a.couleur ?? null,
         }))
       )
       if (erreurArticles) throw erreurArticles
@@ -279,6 +286,9 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
       )
     : tarifs
 
+  const tarifsFiltresVetements = tarifsFiltres.filter((t) => t.categorie !== 'forfait')
+  const tarifsFiltresForfaits = tarifsFiltres.filter((t) => t.categorie === 'forfait')
+
   // ---- Catalogue (tuiles cliquables, façon caisse) ----
   const catalogue = (
     <Card>
@@ -290,23 +300,19 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
         onChange={(e) => setRechercheArticle(e.target.value)}
         className="mb-3 w-full rounded-card border border-gray-300 px-3 py-2 text-sm outline-none focus:border-pressci-primary"
       />
-      <div className="grid max-h-[55vh] grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
-        {tarifsFiltres.map((t) => (
+
+      {/* Vêtements */}
+      <div className="grid max-h-[45vh] grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4">
+        {tarifsFiltresVetements.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => ajouterDepuisCatalogue(t)}
             className="flex flex-col items-center gap-1 rounded-card border border-gray-200 bg-white p-2.5 text-center transition-colors hover:border-pressci-primary active:bg-pressci-light"
           >
-            <span className="text-2xl" aria-hidden>
-              {emojiArticle(t.type_article)}
-            </span>
-            <span className="w-full truncate text-xs font-medium text-gray-800">
-              {t.type_article}
-            </span>
-            <span className="text-[11px] font-semibold text-pressci-primary">
-              {formatFCFA(t.prix_defaut)}
-            </span>
+            <span className="text-2xl" aria-hidden>{emojiArticle(t.type_article)}</span>
+            <span className="w-full truncate text-xs font-medium text-gray-800">{t.type_article}</span>
+            <span className="text-[11px] font-semibold text-pressci-primary">{formatFCFA(t.prix_defaut)}</span>
           </button>
         ))}
 
@@ -316,12 +322,34 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           onClick={ajouterArticleLibre}
           className="flex flex-col items-center justify-center gap-1 rounded-card border border-dashed border-pressci-primary bg-white p-2.5 text-center transition-colors active:bg-pressci-light"
         >
-          <span className="text-2xl text-pressci-primary" aria-hidden>
-            ＋
-          </span>
+          <span className="text-2xl text-pressci-primary" aria-hidden>＋</span>
           <span className="text-xs font-medium text-pressci-primary">Article libre</span>
         </button>
       </div>
+
+      {/* Forfaits & services */}
+      {tarifsFiltresForfaits.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-2 text-xs font-semibold text-gray-500">🎁 Forfaits & services</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {tarifsFiltresForfaits.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => ajouterDepuisCatalogue(t)}
+                className="flex items-center gap-2 rounded-card border border-dashed border-green-300 bg-green-50 px-3 py-2 text-left transition-colors hover:border-green-500 active:bg-green-100"
+              >
+                <span className="text-xl" aria-hidden>🎁</span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-gray-800">{t.type_article}</p>
+                  <p className="text-[11px] font-semibold text-green-700">{formatFCFA(t.prix_defaut)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {tarifsFiltres.length === 0 && rechercheArticle && (
         <p className="mt-2 text-center text-sm text-gray-500">
           Aucun article trouvé pour « {rechercheArticle} ».
@@ -448,83 +476,132 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                 </span>
               </div>
 
+              {/* Overlay pour fermer le sélecteur de couleur */}
+              {ouvertCouleur !== null && (
+                <div className="fixed inset-0 z-10" onClick={() => setOuvertCouleur(null)} />
+              )}
+
               {articles.length === 0 ? (
                 <p className="py-6 text-center text-sm text-gray-400">
-                  Le panier est vide — touchez un article du catalogue pour l’ajouter.
+                  Le panier est vide — touchez un article du catalogue pour l'ajouter.
                 </p>
               ) : (
                 <div className="space-y-2">
                   {articles.map((article, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 rounded-card border border-gray-200 p-2.5"
-                    >
-                      {/* Nom + prix unitaire */}
-                      <div className="min-w-0 flex-1">
-                        {article.type_article === '' ? (
-                          <input
-                            type="text"
-                            placeholder="Nom de l'article"
-                            autoFocus
-                            onBlur={(e) => majLigne(i, { type_article: e.target.value })}
-                            className="mb-1 w-full rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-pressci-primary"
-                          />
-                        ) : (
-                          <p className="truncate text-sm font-semibold text-gray-800">
-                            {emojiArticle(article.type_article)} {article.type_article}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <input
-                            type="number"
-                            min={0}
-                            value={article.prix_unitaire || ''}
-                            placeholder="Prix"
-                            onChange={(e) =>
-                              majLigne(i, { prix_unitaire: parseInt(e.target.value, 10) || 0 })
-                            }
-                            className="w-20 rounded border border-gray-200 px-1.5 py-0.5 text-xs outline-none focus:border-pressci-primary"
-                            aria-label={`Prix unitaire de ${article.type_article || 'l’article'}`}
-                          />
-                          <span>FCFA / pièce</span>
+                    <div key={i} className="space-y-0">
+                      <div className="flex items-center gap-2 rounded-card border border-gray-200 p-2.5">
+                        {/* Nom + prix unitaire */}
+                        <div className="min-w-0 flex-1">
+                          {article.type_article === '' ? (
+                            <input
+                              type="text"
+                              placeholder="Nom de l'article"
+                              autoFocus
+                              onBlur={(e) => majLigne(i, { type_article: e.target.value })}
+                              className="mb-1 w-full rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-pressci-primary"
+                            />
+                          ) : (
+                            <p className="truncate text-sm font-semibold text-gray-800">
+                              {emojiArticle(article.type_article)} {article.type_article}
+                              {article.couleur && (
+                                <span className="ml-1 text-xs font-normal text-gray-500">
+                                  — {nomCouleur(article.couleur)}
+                                </span>
+                              )}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <input
+                              type="number"
+                              min={0}
+                              value={article.prix_unitaire || ''}
+                              placeholder="Prix"
+                              onChange={(e) =>
+                                majLigne(i, { prix_unitaire: parseInt(e.target.value, 10) || 0 })
+                              }
+                              className="w-20 rounded border border-gray-200 px-1.5 py-0.5 text-xs outline-none focus:border-pressci-primary"
+                              aria-label={`Prix unitaire de ${article.type_article || "l'article"}`}
+                            />
+                            <span>FCFA / pièce</span>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Quantité - / + */}
-                      <div className="flex shrink-0 items-center gap-1">
+                        {/* Bouton couleur */}
+                        <div className="relative z-20 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setOuvertCouleur(ouvertCouleur === i ? null : i)}
+                            title="Couleur du vêtement"
+                            className="flex h-7 w-7 items-center justify-center rounded-full border-2 text-[10px] transition-transform active:scale-90"
+                            style={{
+                              backgroundColor: article.couleur ?? '#F3F4F6',
+                              borderColor: article.couleur ?? '#D1D5DB',
+                            }}
+                          >
+                            {!article.couleur && <span className="text-gray-400">🎨</span>}
+                          </button>
+
+                          {ouvertCouleur === i && (
+                            <div className="absolute right-0 top-9 z-30 w-52 rounded-card border border-gray-200 bg-white p-2 shadow-xl">
+                              <p className="mb-1.5 text-[10px] font-semibold text-gray-500">Couleur du vêtement</p>
+                              <div className="grid grid-cols-7 gap-1.5">
+                                {/* Effacer */}
+                                <button
+                                  type="button"
+                                  onClick={() => { majLigne(i, { couleur: undefined }); setOuvertCouleur(null) }}
+                                  className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-gray-300 bg-gray-100 text-[9px] text-gray-500"
+                                  title="Aucune couleur"
+                                >✕</button>
+                                {COULEURS_VETEMENT.map((c) => (
+                                  <button
+                                    key={c.hex}
+                                    type="button"
+                                    onClick={() => { majLigne(i, { couleur: c.hex }); setOuvertCouleur(null) }}
+                                    title={c.nom}
+                                    className={`h-6 w-6 rounded-full ${c.contour ? 'border-2 border-gray-300' : 'border border-gray-200'} ${article.couleur === c.hex ? 'ring-2 ring-pressci-primary ring-offset-1' : ''}`}
+                                    style={{ backgroundColor: c.hex }}
+                                  />
+                                ))}
+                              </div>
+                              {article.couleur && (
+                                <p className="mt-1.5 text-center text-[10px] font-semibold text-gray-600">
+                                  {nomCouleur(article.couleur)}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Quantité - / + */}
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => changerQuantite(i, -1)}
+                            aria-label="Diminuer la quantité"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-lg font-bold text-red-500 active:bg-red-100"
+                          >−</button>
+                          <span className="w-8 text-center text-sm font-bold">{article.quantite}</span>
+                          <button
+                            type="button"
+                            onClick={() => changerQuantite(i, 1)}
+                            aria-label="Augmenter la quantité"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-50 text-lg font-bold text-green-600 active:bg-green-100"
+                          >+</button>
+                        </div>
+
+                        {/* Sous-total */}
+                        <span className="w-20 shrink-0 text-right text-sm font-semibold text-gray-800">
+                          {(article.quantite * article.prix_unitaire).toLocaleString('fr-FR')}
+                        </span>
+
+                        {/* Retirer */}
                         <button
                           type="button"
-                          onClick={() => changerQuantite(i, -1)}
-                          aria-label="Diminuer la quantité"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-lg font-bold text-red-500 active:bg-red-100"
-                        >
-                          −
-                        </button>
-                        <span className="w-8 text-center text-sm font-bold">{article.quantite}</span>
-                        <button
-                          type="button"
-                          onClick={() => changerQuantite(i, 1)}
-                          aria-label="Augmenter la quantité"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-50 text-lg font-bold text-green-600 active:bg-green-100"
-                        >
-                          +
-                        </button>
+                          onClick={() => retirerLigne(i)}
+                          aria-label="Retirer l'article"
+                          className="shrink-0 px-1 text-lg font-bold text-red-500"
+                        >✕</button>
                       </div>
-
-                      {/* Sous-total */}
-                      <span className="w-20 shrink-0 text-right text-sm font-semibold text-gray-800">
-                        {(article.quantite * article.prix_unitaire).toLocaleString('fr-FR')}
-                      </span>
-
-                      {/* Retirer */}
-                      <button
-                        type="button"
-                        onClick={() => retirerLigne(i)}
-                        aria-label="Retirer l'article"
-                        className="shrink-0 px-1 text-lg font-bold text-red-500"
-                      >
-                        ✕
-                      </button>
                     </div>
                   ))}
                 </div>

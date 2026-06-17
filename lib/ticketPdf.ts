@@ -4,6 +4,7 @@ import {
   formatFCFA,
   formatHeure,
   MODE_PAIEMENT_LABELS,
+  nomCouleur,
   STATUT_LABELS,
 } from '@/lib/utils'
 import type { Pressing, ProfilProprietaire, Ticket } from '@/types'
@@ -155,7 +156,7 @@ export async function genererTicketPdf(
     startY: y,
     head: [['Article', 'Qté', 'Prix unitaire', 'Sous-total']],
     body: (ticket.articles ?? []).map((a) => [
-      a.type_article,
+      a.couleur ? `${a.type_article} (${nomCouleur(a.couleur)})` : a.type_article,
       String(a.quantite),
       formatFCFA(a.prix_unitaire),
       formatFCFA(a.sous_total),

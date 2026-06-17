@@ -247,7 +247,14 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         <div className="space-y-2 border-b border-dashed border-gray-200 py-3">
           {(ticket.articles ?? []).map((a) => (
             <div key={a.id} className="flex items-center justify-between text-sm">
-              <span>
+              <span className="flex items-center gap-1.5">
+                {a.couleur && (
+                  <span
+                    className="inline-block h-3 w-3 shrink-0 rounded-full border border-gray-300"
+                    style={{ backgroundColor: a.couleur }}
+                    title={a.couleur}
+                  />
+                )}
                 {a.quantite} × {a.type_article}
               </span>
               <span className="font-medium">{formatFCFA(a.sous_total)}</span>
@@ -591,6 +598,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
           <div key={a.id} className="flex justify-between">
             <span>
               {a.quantite} x {a.type_article}
+              {a.couleur && ` (${a.couleur})`}
             </span>
             <span>{a.sous_total.toLocaleString('fr-FR')}</span>
           </div>

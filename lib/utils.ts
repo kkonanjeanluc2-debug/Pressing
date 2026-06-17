@@ -108,19 +108,62 @@ export function emailAgent(tel: string): string {
   return `${normaliserTelephone(tel)}@agents.pressci.app`
 }
 
-/** Petite icône par type de vêtement (catalogue, listes). */
+/** Petite icône par type de vêtement ou service (catalogue, listes). */
 export function emojiArticle(nom: string): string {
   const n = nom.toLowerCase()
-  if (n.includes('chemise')) return '👔'
-  if (n.includes('pantalon') || n.includes('jean')) return '👖'
-  if (n.includes('costume')) return '🤵'
-  if (n.includes('robe')) return '👗'
-  if (n.includes('jupe')) return '👗'
-  if (n.includes('boubou')) return '🧕'
-  if (n.includes('drap') || n.includes('couette') || n.includes('couverture')) return '🛏️'
-  if (n.includes('veste') || n.includes('manteau') || n.includes('blouson')) return '🧥'
+  if (n.includes('forfait') || n.includes('formule') || n.includes('pack')) return '🎁'
+  if (n.includes('smoking') || n.includes('costume de thé') || n.includes('déguisement')) return '🎩'
+  if (n.includes('maillot de bain')) return '🩱'
+  if (n.includes('peignoir')) return '🛁'
+  if (n.includes('tapis de bain')) return '🪣'
+  if (n.includes('robe de mariée') || n.includes('voile de mariée')) return '👰'
+  if (n.includes('uniforme scolaire')) return '🎒'
+  if (n.includes('tenue militaire')) return '🪖'
+  if (n.includes('blouse de médecin') || n.includes('blouse de labor')) return '🩺'
+  if (n.includes('tenue de cuisinier') || n.includes('tablier')) return '👨‍🍳'
+  if (n.includes('salopette') || n.includes('uniforme') || n.includes('tenue de travail') || n.includes('veste de travail') || n.includes('tenue de commis') || n.includes('tenue de sécurité') || n.includes('uniforme de sécurité') || n.includes('blouse de labor')) return '🦺'
+  if (n.includes('chemise') || n.includes('chemisier')) return '👔'
+  if (n.includes('t-shirt') || n.includes('polo') || n.includes('top') || n.includes('body')) return '👕'
+  if (n.includes('pull') || n.includes('gilet') || n.includes('cachemire')) return '🧶'
+  if (n.includes('pantalon') || n.includes('jean') || n.includes('short') || n.includes('combinaison')) return '👖'
+  if (n.includes('smoking') || n.includes('costume') || n.includes('tailleur')) return '🤵'
+  if (n.includes('robe') || n.includes('jupe')) return '👗'
+  if (n.includes('boubou') || n.includes('kaftan') || n.includes('djellaba') || n.includes('saharienne') || n.includes('agbada') || n.includes('grand complet')) return '🧕'
+  if (n.includes('bazin') || n.includes('brodé') || n.includes('kita') || n.includes('fani') || n.includes('wax') || n.includes('soie') || n.includes('cérémonie') || n.includes('célébration') || n.includes('notabilité') || n.includes('chef') || n.includes('danse tradition') || n.includes('kabba') || n.includes('attié') || n.includes('pagne') || n.includes('africain') || n.includes('broderie') || n.includes('baptême') || n.includes('communion') || n.includes('tabaski') || n.includes('noël') || n.includes('pâques')) return '👘'
+  if (n.includes('veste en cuir') || n.includes('similicuir') || n.includes('manteau en laine')) return '🥼'
+  if (n.includes('veste') || n.includes('manteau') || n.includes('blouson') || n.includes('veste femme')) return '🧥'
+  if (n.includes('cravate') || n.includes('nœud papillon') || n.includes('écharpe') || n.includes('echarpe')) return '🧣'
+  if (n.includes('drap') || n.includes('couette') || n.includes('housse de couette') || n.includes('tour de lit') || n.includes('couverture') || n.includes('taie') || n.includes('oreiller') || n.includes('tour de lit')) return '🛏️'
+  if (n.includes('nappe') || n.includes('serviette de table') || n.includes('jeté')) return '🍽️'
+  if (n.includes('rideau')) return '🪟'
+  if (n.includes('serviette de bain') || n.includes('tapis de bain')) return '🏊'
   if (n.includes('chaussure')) return '👞'
+  if (n.includes('sac en tissu') || n.includes('sac / sacoche') || n.includes('sacoche')) return '👜'
+  if (n.includes('sous-vêt') || n.includes('dentelle') || n.includes('maillot')) return '🩲'
   return '🧺'
+}
+
+/** Palette de couleurs pour les vêtements. */
+export const COULEURS_VETEMENT: Array<{ nom: string; hex: string; contour?: boolean }> = [
+  { nom: 'Blanc', hex: '#FFFFFF', contour: true },
+  { nom: 'Noir', hex: '#1C1C1E' },
+  { nom: 'Gris', hex: '#8E8E93' },
+  { nom: 'Beige', hex: '#D4B896' },
+  { nom: 'Marron', hex: '#8B5A2B' },
+  { nom: 'Rouge', hex: '#FF3B30' },
+  { nom: 'Bordeaux', hex: '#800020' },
+  { nom: 'Rose', hex: '#FF69B4' },
+  { nom: 'Orange', hex: '#FF9500' },
+  { nom: 'Jaune', hex: '#FFCC00' },
+  { nom: 'Vert', hex: '#34C759' },
+  { nom: 'Bleu', hex: '#007AFF' },
+  { nom: 'Marine', hex: '#003366' },
+  { nom: 'Violet', hex: '#AF52DE' },
+]
+
+/** Nom français de la couleur depuis son code hex. */
+export function nomCouleur(hex: string): string {
+  return COULEURS_VETEMENT.find((c) => c.hex === hex)?.nom ?? hex
 }
 
 /** Message SMS type "linge prêt" */
