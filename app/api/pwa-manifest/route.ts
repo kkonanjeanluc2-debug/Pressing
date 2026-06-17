@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(): Promise<NextResponse> {
-  let iconSrc = '/icons/icon-192.png'
+  let iconSrc: string | null = null
 
   try {
     const supabase = createClient()
@@ -19,14 +19,25 @@ export async function GET(): Promise<NextResponse> {
 
       const logoUrl = (profil?.logo_url as string | null)?.split('?')[0]
       if (logoUrl) {
-        // Proxy same-origin pour contourner la restriction cross-origin
-        // des icônes PWA sur Chrome Android
         iconSrc = `/api/pwa-icon?u=${encodeURIComponent(logoUrl)}`
       }
     }
   } catch {
-    // fallback sur l'icône statique
+    // fallback sur les icônes statiques
   }
+
+  // Chrome Android choisit l'icône maskable en priorité pour l'écran d'accueil.
+  // Si l'utilisateur a un logo, on l'utilise pour TOUS les purposes (any + maskable).
+  const icons = iconSrc
+    ? [
+        { src: iconSrc, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: iconSrc, sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: iconSrc, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ]
+    : [
+        { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ]
 
   const manifest = {
     name: 'Pressing Ivoire',
@@ -39,26 +50,7 @@ export async function GET(): Promise<NextResponse> {
     theme_color: '#0F6E56',
     lang: 'fr',
     categories: ['business', 'productivity'],
-    icons: [
-      {
-        src: iconSrc,
-        sizes: '192x192',
-        type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: iconSrc,
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: '/icons/icon-512-maskable.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'maskable',
-      },
-    ],
+    icons,
     shortcuts: [
       {
         name: 'Nouveau dépôt',
