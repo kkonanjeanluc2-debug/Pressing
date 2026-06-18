@@ -60,7 +60,8 @@ export async function initierPaiement(
   plan: Exclude<Plan, 'gratuit'>,
   clientNom: string,
   clientTelephone: string,
-  duree: number = 1
+  duree: number = 1,
+  reductionPromo: number = 0
 ): Promise<InitPaiementResult> {
   const headers = entetes()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -68,8 +69,10 @@ export async function initierPaiement(
     return { succes: false, erreur: 'Configuration GeniusPay manquante' }
   }
 
-  const remise = REMISES_DUREE[duree as keyof typeof REMISES_DUREE] ?? 0
-  const montantTotal = Math.round(PRIX_PLANS[plan] * duree * (1 - remise / 100))
+  const remiseDuree = REMISES_DUREE[duree as keyof typeof REMISES_DUREE] ?? 0
+  // La remise promo s'additionne à la remise durée, plafonnée à 50 %
+  const remiseTotale = Math.min(remiseDuree + reductionPromo, 50)
+  const montantTotal = Math.round(PRIX_PLANS[plan] * duree * (1 - remiseTotale / 100))
   const nomPlan = plan === 'pro' ? 'Pro' : plan === 'business' ? 'Business' : 'Réseau'
   const descDuree = duree === 1 ? '1 mois' : `${duree} mois`
 
@@ -91,6 +94,7 @@ export async function initierPaiement(
         owner_id: ownerId,
         plan,
         duree,
+        reduction_promo: reductionPromo,
         produit: 'abonnement_pressci',
       },
     }),

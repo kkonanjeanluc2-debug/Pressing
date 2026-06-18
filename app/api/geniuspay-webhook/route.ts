@@ -83,6 +83,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     typeof metadata.duree === 'number' && [1, 3, 6, 12].includes(metadata.duree as number)
       ? (metadata.duree as number)
       : 1
+  const reductionPromo =
+    typeof metadata.reduction_promo === 'number' && metadata.reduction_promo >= 0
+      ? (metadata.reduction_promo as number)
+      : 0
 
   if (!ownerId || !/^[0-9a-f-]{36}$/.test(ownerId) || !plan) {
     return NextResponse.json({ erreur: 'Metadata invalides' }, { status: 400 })
@@ -118,6 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     date_fin: dateFin.toISOString(),
     transaction_id: reference,
     montant: PRIX_PLANS[plan],
+    reduction_promo: reductionPromo,
   })
 
   if (error) {

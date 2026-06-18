@@ -1,5 +1,5 @@
 import { initierPaiement } from '@/lib/geniuspay'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import type { Plan } from '@/types'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Identité de facturation : profil du titulaire, sinon premier pressing
   const [{ data: profil }, { data: pressing }] = await Promise.all([
-    supabase.from('profils').select('nom, telephone').eq('user_id', user.id).maybeSingle(),
+    supabase.from('profils').select('nom, telephone, parraine_par').eq('user_id', user.id).maybeSingle(),
     supabase
       .from('pressings')
       .select('nom, telephone')
@@ -64,7 +64,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     (pressing?.telephone as string | null | undefined) ??
     '0000000000'
 
-  const resultat = await initierPaiement(user.id, plan, nomClient, telClient, duree)
+  // Réduction promo : on cherche le code enregistré à l'inscription dans codes_promo
+  let reductionPromo = 0
+  const codeParraine = (profil?.parraine_par as string | null) ?? null
+  if (codeParraine) {
+    const admin = createAdminClient()
+    const { data: codePromo } = await admin
+      .from('codes_promo')
+      .select('reduction_pct')
+      .eq('code', codeParraine)
+      .eq('actif', true)
+      .maybeSingle()
+    if (codePromo) {
+      reductionPromo = codePromo.reduction_pct as number
+    }
+  }
+
+  const resultat = await initierPaiement(user.id, plan, nomClient, telClient, duree, reductionPromo)
 
   return NextResponse.json(resultat, { status: resultat.succes ? 200 : 502 })
 }

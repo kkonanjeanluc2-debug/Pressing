@@ -65,6 +65,7 @@ export default function ParametresPage() {
   const [abonnement, setAbonnement] = useState<Abonnement | null>(null)
   const [paiementEnCours, setPaiementEnCours] = useState<Plan | null>(null)
   const [duree, setDuree] = useState<1 | 3 | 6 | 12>(1)
+  const [reductionPromo, setReductionPromo] = useState(0)
 
   // Retour d'un paiement GeniusPay échoué ou annulé
   useEffect(() => {
@@ -104,6 +105,18 @@ export default function ParametresPage() {
         setNcc((profil.ncc as string | null) ?? '')
         setTelGerant((profil.telephone as string | null) ?? '')
         setLogoUrl((profil.logo_url as string | null) ?? null)
+
+        // Vérifier si le code promo enregistré à l'inscription donne une réduction
+        const code = (profil.parraine_par as string | null) ?? null
+        if (code) {
+          const { data: cp } = await supabase
+            .from('codes_promo')
+            .select('reduction_pct')
+            .eq('code', code)
+            .eq('actif', true)
+            .maybeSingle()
+          if (cp) setReductionPromo(cp.reduction_pct as number)
+        }
       } else {
         if (meta.type_compte === 'entreprise') setTypeCompte('entreprise')
         if (typeof meta.nom === 'string') setNomGerant(meta.nom)
@@ -623,6 +636,15 @@ export default function ParametresPage() {
               <Card className="space-y-4">
                 <h2 className="text-sm font-semibold text-gray-700">Changer de forfait</h2>
 
+                {reductionPromo > 0 && (
+                  <div className="flex items-center gap-2 rounded-xl border border-green-300 bg-green-50 px-3 py-2">
+                    <span className="text-base">🏷</span>
+                    <p className="text-sm font-semibold text-green-800">
+                      Code promo appliqué : <span className="text-green-700">−{reductionPromo}%</span> sur tous les forfaits
+                    </p>
+                  </div>
+                )}
+
                 {/* Sélecteur de durée */}
                 <div>
                   <p className="mb-2 text-xs font-medium text-gray-500">Durée d'engagement</p>
@@ -658,7 +680,8 @@ export default function ParametresPage() {
                   {PLANS.map((p) => {
                     const actif = p.id === planActuel
                     const remise = REMISES_DUREE[duree]
-                    const prixMensuelRemise = Math.round(p.prix * (1 - remise / 100))
+                    const remiseTotale = Math.min(remise + reductionPromo, 50)
+                    const prixMensuelRemise = Math.round(p.prix * (1 - remiseTotale / 100))
                     const prixTotal = prixMensuelRemise * duree
                     const fonctionnalites: string[] =
                       p.id === 'gratuit'
@@ -713,7 +736,7 @@ export default function ParametresPage() {
                             ) : (
                               <div>
                                 <div className="flex items-baseline gap-1.5">
-                                  {remise > 0 && (
+                                  {remiseTotale > 0 && (
                                     <span className="text-xs text-gray-300 line-through">
                                       {formatFCFA(p.prix)}/mois
                                     </span>
@@ -721,6 +744,11 @@ export default function ParametresPage() {
                                   <span className="text-sm font-bold text-pressci-dark">
                                     {formatFCFA(prixMensuelRemise)}/mois
                                   </span>
+                                  {reductionPromo > 0 && remise === 0 && (
+                                    <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-bold text-green-700">
+                                      −{reductionPromo}%
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-xs text-gray-500">
                                   {duree > 1
