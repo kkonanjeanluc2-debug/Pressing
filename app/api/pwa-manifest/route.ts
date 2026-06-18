@@ -1,25 +1,40 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   let iconSrc: string | null = null
 
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Priorité 1 : uid dans l'URL (injecté par le dashboard layout, sans cookie)
+    const uid = request.nextUrl.searchParams.get('uid')
 
-    if (user) {
-      const { data: profil } = await supabase
+    if (uid) {
+      const admin = createAdminClient()
+      const { data: profil } = await admin
         .from('profils')
         .select('logo_url')
-        .eq('user_id', user.id)
+        .eq('user_id', uid)
         .maybeSingle()
-
       const logoUrl = (profil?.logo_url as string | null)?.split('?')[0]
       if (logoUrl) {
         iconSrc = `/api/pwa-icon?u=${encodeURIComponent(logoUrl)}`
+      }
+    } else {
+      // Priorité 2 : session cookie (fallback pour les pages hors dashboard)
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profil } = await supabase
+          .from('profils')
+          .select('logo_url')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        const logoUrl = (profil?.logo_url as string | null)?.split('?')[0]
+        if (logoUrl) {
+          iconSrc = `/api/pwa-icon?u=${encodeURIComponent(logoUrl)}`
+        }
       }
     }
   } catch {
