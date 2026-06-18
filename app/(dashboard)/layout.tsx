@@ -30,7 +30,11 @@ export async function generateMetadata(): Promise<Metadata> {
         : '/api/pwa-icon'
       return {
         manifest: `/api/pwa-manifest?uid=${user.id}`,
-        icons: { apple: [{ url: iconUrl, sizes: '180x180', type: 'image/png' }] },
+        icons: {
+          icon: [{ url: iconUrl, sizes: '192x192', type: 'image/png' }],
+          shortcut: iconUrl,
+          apple: [{ url: iconUrl, sizes: '180x180', type: 'image/png' }],
+        },
       }
     }
   } catch {
