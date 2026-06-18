@@ -6,7 +6,7 @@ import { viderCache } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const IC = 'h-6 w-6'
 
@@ -76,6 +76,22 @@ export default function BottomNav() {
   const router = useRouter()
   const { role, agent, peut } = useProfil()
   const [menuOuvert, setMenuOuvert] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [nomPressing, setNomPressing] = useState<string | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    void supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return
+      const { data: profil } = await supabase
+        .from('profils')
+        .select('logo_url, nom')
+        .eq('user_id', data.user.id)
+        .maybeSingle()
+      if (profil?.logo_url) setLogoUrl(profil.logo_url as string)
+      if (profil?.nom) setNomPressing(profil.nom as string)
+    })
+  }, [])
 
   const menuActif = ROUTES_MENU.some((r) => pathname.startsWith(r))
 
@@ -178,6 +194,23 @@ export default function BottomNav() {
             </div>
 
             <div className="px-4 pb-4">
+              {/* Logo du pressing */}
+              {(logoUrl || nomPressing) && (
+                <div className="mb-4 flex items-center gap-3">
+                  {logoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt={nomPressing ?? 'Logo'}
+                      className="h-12 w-12 shrink-0 rounded-xl object-contain border border-gray-100 p-1"
+                    />
+                  )}
+                  {nomPressing && (
+                    <p className="text-base font-bold text-pressci-dark">{nomPressing}</p>
+                  )}
+                </div>
+              )}
+
               <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
                 Navigation
               </p>

@@ -124,6 +124,8 @@ export default function SideNav() {
   const { estAdmin } = useSuperAdmin()
   const [reduite, setReduite] = useState(false)
   const [email, setEmail] = useState<string | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [nomPressing, setNomPressing] = useState<string | null>(null)
 
   // Menu filtré selon le rôle et les permissions de l'agent
   const liens = LIENS.filter((lien) => {
@@ -140,8 +142,17 @@ export default function SideNav() {
   useEffect(() => {
     setReduite(window.localStorage.getItem(CLE_SIDEBAR) === '1')
     const supabase = createClient()
-    void supabase.auth.getUser().then(({ data }) => {
+    void supabase.auth.getUser().then(async ({ data }) => {
       setEmail(data.user?.email ?? null)
+      if (!data.user) return
+      // Logo et nom du pressing depuis le profil du propriétaire
+      const { data: profil } = await supabase
+        .from('profils')
+        .select('logo_url, nom')
+        .eq('user_id', data.user.id)
+        .maybeSingle()
+      if (profil?.logo_url) setLogoUrl(profil.logo_url as string)
+      if (profil?.nom) setNomPressing(profil.nom as string)
     })
   }, [])
 
@@ -173,13 +184,20 @@ export default function SideNav() {
     >
       {/* Logo */}
       <div className={cn('flex items-center gap-3 border-b border-white/10 py-3', reduite ? 'justify-center px-2' : 'px-3')}>
-        <div className={cn('shrink-0 overflow-hidden rounded-xl', reduite ? 'h-12 w-12' : 'h-14 w-14')}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Pressing Ivoire" className="h-full w-full object-contain" />
+        <div className={cn('shrink-0 overflow-hidden rounded-xl bg-white/10', reduite ? 'h-12 w-12' : 'h-14 w-14')}>
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt={nomPressing ?? 'Logo'} className="h-full w-full object-contain p-1" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/logo.png" alt="Pressing Ivoire" className="h-full w-full object-contain" />
+          )}
         </div>
         {!reduite && (
           <div className="min-w-0">
-            <p className="truncate text-base font-bold leading-tight text-white">Pressing Ivoire</p>
+            <p className="truncate text-base font-bold leading-tight text-white">
+              {nomPressing ?? 'Pressing Ivoire'}
+            </p>
             <p className="text-xs text-pressci-light/60">Gestion de pressing</p>
           </div>
         )}
