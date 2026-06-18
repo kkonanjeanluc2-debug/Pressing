@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Fond vert PressCI avec coins arrondis -->
+  <rect width="32" height="32" rx="8" fill="#0F6E56"/>
+  <!-- Lettre P tracée en path (pas de dépendance fonte) -->
+  <path fill="white" d="M8 7h9.5a6 6 0 010 12H12v6H8V7zm4 3.5v5h5.5a2.5 2.5 0 000-5H12z"/>
+</svg>

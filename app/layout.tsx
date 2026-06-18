@@ -13,8 +13,6 @@ export const metadata: Metadata = {
     title: 'Pressing Ivoire',
   },
   icons: {
-    icon: [{ url: '/api/pwa-icon', sizes: '192x192', type: 'image/png' }],
-    shortcut: '/api/pwa-icon',
     apple: [{ url: '/api/pwa-icon', sizes: '180x180', type: 'image/png' }],
   },
 }
