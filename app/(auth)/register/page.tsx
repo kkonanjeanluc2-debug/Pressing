@@ -21,7 +21,6 @@ export default function RegisterPage() {
   const [voirConfirm, setVoirConfirm] = useState(false)
   const [codeParrainage, setCodeParrainage] = useState('')
   const [erreur, setErreur] = useState<string | null>(null)
-  const [confirmationRequise, setConfirmationRequise] = useState(false)
   const [chargement, setChargement] = useState(false)
 
   async function creerCompte(e: FormEvent) {
@@ -46,84 +45,44 @@ export default function RegisterPage() {
     }
 
     setChargement(true)
-    const supabase = createClient()
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password: motDePasse,
-      options: {
-        data: {
-          type_compte: typeCompte,
-          nom: nomTitulaire.trim(),
-          rccm: rccm.trim() || null,
-          ncc: ncc.trim() || null,
-        },
-      },
-    })
-
-    if (authError || !authData.user) {
-      setChargement(false)
-      setErreur(
-        authError?.message.includes('already registered')
-          ? 'Un compte existe déjà avec cet email. Connectez-vous plutôt.'
-          : "Création du compte impossible. Vérifiez votre réseau et réessayez."
-      )
-      return
-    }
-
-    // Confirmation d'email activée : pas de session pour l'instant
-    if (!authData.session) {
-      setChargement(false)
-      setConfirmationRequise(true)
-      return
-    }
-
-    // Profil du titulaire (affiché sur les documents) + abonnement gratuit du compte
-    await Promise.all([
-      supabase.from('profils').upsert({
-        user_id: authData.user.id,
-        type_compte: typeCompte,
-        nom: nomTitulaire.trim(),
+    // Création via route serveur (email_confirm: true → pas de validation mail requise)
+    const res = await fetch('/api/auth/inscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password: motDePasse,
+        typeCompte,
+        nomTitulaire: nomTitulaire.trim(),
         rccm: rccm.trim() || null,
         ncc: ncc.trim() || null,
+        codeParrainage: codeParrainage.trim() || null,
       }),
-      supabase.from('abonnements').insert({
-        owner_id: authData.user.id,
-        plan: 'gratuit',
-        statut: 'actif',
-      }),
-    ])
+    })
 
-    // Parrainage : mise à jour séparée (nécessite la migration 015 — best-effort)
-    const codeNormalise = codeParrainage.trim().toLowerCase()
-    if (codeNormalise) {
-      await supabase
-        .from('profils')
-        .update({ parraine_par: codeNormalise })
-        .eq('user_id', authData.user.id)
+    const json = await res.json()
+    if (!res.ok) {
+      setChargement(false)
+      setErreur(json.erreur ?? "Création du compte impossible. Vérifiez votre réseau et réessayez.")
+      return
     }
 
-    // Le tableau de bord guidera la création du premier pressing
+    // Connexion automatique après création
+    const supabase = createClient()
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email,
+      password: motDePasse,
+    })
+
+    if (loginError) {
+      setChargement(false)
+      setErreur("Compte créé mais connexion échouée. Connectez-vous manuellement.")
+      return
+    }
+
     router.push('/')
     router.refresh()
-  }
-
-  if (confirmationRequise) {
-    return (
-      <main className="flex flex-col justify-center text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pressci-primary text-3xl text-white">
-          ✉️
-        </div>
-        <h1 className="text-2xl font-bold text-pressci-dark">Vérifiez votre boîte mail</h1>
-        <p className="mt-2 text-gray-600">
-          Un email de confirmation a été envoyé à <strong>{email}</strong>. Cliquez sur le lien
-          dans cet email, puis connectez-vous : vous pourrez alors créer votre pressing.
-        </p>
-        <Link href="/login" className="mt-6 font-semibold text-pressci-primary">
-          Aller à la connexion
-        </Link>
-      </main>
-    )
   }
 
   return (
