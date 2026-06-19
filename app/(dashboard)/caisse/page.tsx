@@ -1,6 +1,7 @@
 'use client'
 
 import Button from '@/components/ui/Button'
+import SansPressing from '@/components/ui/SansPressing'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
@@ -81,7 +82,7 @@ function LigneEncaissement({ e }: { e: EncaissementAvecTicket }) {
 }
 
 export default function CaissePage() {
-  const { pressings } = usePressing()
+  const { pressing, pressings, chargement: chargementPressing } = usePressing()
   const { role, agent, peut, chargement: chargementProfil } = useProfil()
   const { proprietaire } = useProfilProprietaire(pressings[0]?.owner_id ?? null)
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
@@ -126,6 +127,8 @@ export default function CaissePage() {
     },
     'Impossible de charger la caisse. Vérifiez votre réseau.'
   )
+
+  if (!chargementPressing && !pressing) return <SansPressing />
 
   if (!chargementProfil && !peut('voir_caisse')) {
     return (

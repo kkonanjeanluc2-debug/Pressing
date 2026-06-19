@@ -3,6 +3,7 @@
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
+import SansPressing from '@/components/ui/SansPressing'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
@@ -36,7 +37,7 @@ function parserListe(texte: string): { valides: LigneImport[]; ignorees: number 
 }
 
 export default function VetementsPage() {
-  const { pressings, chargement: chargementPressings } = usePressing()
+  const { pressing, pressings, chargement: chargementPressings } = usePressing()
   const { peut } = useProfil()
   const supabase = createClient()
 
@@ -194,6 +195,7 @@ export default function VetementsPage() {
       </div>
     )
   }
+  if (!pressing) return <SansPressing />
 
   const ligneArticle = (v: Tarif) => (
     <div

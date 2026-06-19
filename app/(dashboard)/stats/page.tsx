@@ -2,6 +2,7 @@
 
 import Card from '@/components/ui/Card'
 import BlocagePlan from '@/components/ui/BlocagePlan'
+import SansPressing from '@/components/ui/SansPressing'
 import { useDonneesCachees } from '@/hooks/useDonneesCachees'
 import { usePlan } from '@/hooks/usePlan'
 import { usePressing } from '@/hooks/usePressing'
@@ -56,7 +57,7 @@ const PERIODES: Array<{ id: Periode; label: string }> = [
 ]
 
 export default function StatsPage() {
-  const { pressings } = usePressing()
+  const { pressing, pressings, chargement: chargementPressing } = usePressing()
   const { peut, chargement: chargementProfil } = useProfil()
   const [periode, setPeriode] = useState<Periode>('semaine')
   const [pressingFiltre, setPressingFiltre] = useState<string>('tous')
@@ -205,6 +206,8 @@ export default function StatsPage() {
   const totalPeriode = encaissements.reduce((s, e) => s + e.montant, 0)
 
   // Early returns après tous les hooks
+  if (!chargementPressing && !pressing) return <SansPressing />
+
   if (!chargementPlan && !planAutorise('pro')) {
     return <BlocagePlan planRequis="pro" fonctionnalite="Les statistiques avancées" />
   }

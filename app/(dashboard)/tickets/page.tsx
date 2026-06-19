@@ -1,6 +1,7 @@
 'use client'
 
 import TicketCard from '@/components/tickets/TicketCard'
+import SansPressing from '@/components/ui/SansPressing'
 import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
 import { useTickets, type FiltreTickets } from '@/hooks/useTickets'
@@ -20,7 +21,7 @@ function ListeTickets() {
   const filtreInitial = (searchParams.get('filtre') as FiltreTickets | null) ?? 'tous'
   const pressingInitial = searchParams.get('pressing') ?? 'tous'
 
-  const { pressings } = usePressing()
+  const { pressing, pressings, chargement: chargementPressing } = usePressing()
   const { peut } = useProfil()
   const [filtre, setFiltre] = useState<FiltreTickets>(filtreInitial)
   const [pressingFiltre, setPressingFiltre] = useState<string>(pressingInitial)
@@ -51,6 +52,13 @@ function ListeTickets() {
     },
     [recharger, rafraichissement]
   )
+
+  if (chargementPressing) return (
+    <div className="flex h-[70vh] items-center justify-center">
+      <span className="spinner spinner-dark h-8 w-8" />
+    </div>
+  )
+  if (!pressing) return <SansPressing />
 
   const rechercheNorm = recherche.trim().toLowerCase()
   const ticketsFiltres = rechercheNorm

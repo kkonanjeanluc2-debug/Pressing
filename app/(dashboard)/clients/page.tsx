@@ -1,5 +1,6 @@
 'use client'
 
+import SansPressing from '@/components/ui/SansPressing'
 import { useClients } from '@/hooks/useClients'
 import { usePressing } from '@/hooks/usePressing'
 import { formatFCFA } from '@/lib/utils'
@@ -7,10 +8,17 @@ import Link from 'next/link'
 import { useState } from 'react'
 
 export default function ClientsPage() {
-  const { pressings } = usePressing()
+  const { pressing, pressings, chargement: chargementPressing } = usePressing()
   const ids = pressings.map((p) => p.id)
   const { clients, chargement, erreur } = useClients(ids.length > 0 ? ids : null)
   const [recherche, setRecherche] = useState('')
+
+  if (chargementPressing) return (
+    <div className="flex h-[70vh] items-center justify-center">
+      <span className="spinner spinner-dark h-8 w-8" />
+    </div>
+  )
+  if (!pressing) return <SansPressing />
 
   const rechercheNorm = recherche.trim().toLowerCase()
   const clientsFiltres = rechercheNorm

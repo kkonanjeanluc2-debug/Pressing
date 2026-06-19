@@ -9,6 +9,7 @@ import { usePressing } from '@/hooks/usePressing'
 import { useProfil } from '@/hooks/useProfil'
 import { useProfilProprietaire } from '@/hooks/useProfilProprietaire'
 import BlocagePlan from '@/components/ui/BlocagePlan'
+import SansPressing from '@/components/ui/SansPressing'
 import { createClient } from '@/lib/supabase/client'
 import {
   COMPTE_PRODUITS,
@@ -71,7 +72,7 @@ function debutDuMois(): string {
 }
 
 export default function ComptabilitePage() {
-  const { pressings } = usePressing()
+  const { pressing, pressings, chargement: chargementPressing } = usePressing()
   const { role, peut, chargement: chargementProfil } = useProfil()
   const { proprietaire } = useProfilProprietaire(pressings[0]?.owner_id ?? null)
   const [onglet, setOnglet] = useState<Onglet>('journal')
@@ -125,6 +126,8 @@ export default function ComptabilitePage() {
   )
 
   const { planAutorise, chargement: chargementPlan } = usePlan(pressings[0]?.owner_id ?? null)
+
+  if (!chargementPressing && !pressing) return <SansPressing />
 
   if (!chargementPlan && !planAutorise('pro')) {
     return <BlocagePlan planRequis="pro" fonctionnalite="La comptabilité" />

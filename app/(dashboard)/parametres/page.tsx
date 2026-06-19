@@ -320,7 +320,7 @@ export default function ParametresPage() {
     )
   }
 
-  if (chargementPressing || !pressing) {
+  if (chargementPressing) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <span className="spinner spinner-dark h-8 w-8" />
