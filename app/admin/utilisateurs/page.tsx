@@ -9,16 +9,18 @@ import { useState } from 'react'
 const BADGE_PLAN: Record<string, string> = {
   gratuit: 'bg-gray-100 text-gray-600',
   pro: 'bg-blue-100 text-blue-700',
+  business: 'bg-amber-100 text-amber-700',
   reseau: 'bg-violet-100 text-violet-700',
 }
 
 const PLANS_OPTIONS = [
   { id: 'gratuit', label: 'Gratuit', couleur: 'border-gray-300 text-gray-700' },
   { id: 'pro', label: 'Pro', couleur: 'border-blue-400 text-blue-700' },
+  { id: 'business', label: 'Business', couleur: 'border-amber-400 text-amber-700' },
   { id: 'reseau', label: 'Réseau', couleur: 'border-violet-400 text-violet-700' },
 ] as const
 
-type PlanId = 'gratuit' | 'pro' | 'reseau'
+type PlanId = 'gratuit' | 'pro' | 'business' | 'reseau'
 
 const DUREES_RAPIDES = [
   { label: '7 jours', jours: 7 },
@@ -249,7 +251,7 @@ export default function AdminUtilisateursPage() {
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${BADGE_PLAN[u.plan] ?? BADGE_PLAN.gratuit}`}
                       >
-                        {u.plan === 'pro' ? 'Pro' : u.plan === 'reseau' ? 'Réseau' : 'Gratuit'}
+                        {u.plan === 'pro' ? 'Pro' : u.plan === 'business' ? 'Business' : u.plan === 'reseau' ? 'Réseau' : 'Gratuit'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
