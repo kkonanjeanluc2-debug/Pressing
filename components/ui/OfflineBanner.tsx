@@ -8,12 +8,15 @@ export default function OfflineBanner() {
   const { nbEnAttente, statut, synchroniser } = useSyncHorsLigne()
 
   useEffect(() => {
-    setHorsLigne(!navigator.onLine)
+    // Délai court avant de vérifier navigator.onLine pour éviter les faux
+    // négatifs au montage (courant sur PWA Android / iOS Safari).
+    const timer = setTimeout(() => setHorsLigne(!navigator.onLine), 1500)
     const surLigne = () => setHorsLigne(false)
     const horsLigneFn = () => setHorsLigne(true)
     window.addEventListener('online', surLigne)
     window.addEventListener('offline', horsLigneFn)
     return () => {
+      clearTimeout(timer)
       window.removeEventListener('online', surLigne)
       window.removeEventListener('offline', horsLigneFn)
     }

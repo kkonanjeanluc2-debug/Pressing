@@ -13,12 +13,7 @@ export default function ClientsPage() {
   const { clients, chargement, erreur } = useClients(ids.length > 0 ? ids : null)
   const [recherche, setRecherche] = useState('')
 
-  if (chargementPressing) return (
-    <div className="flex h-[70vh] items-center justify-center">
-      <span className="spinner spinner-dark h-8 w-8" />
-    </div>
-  )
-  if (!pressing) return <SansPressing />
+  if (!chargementPressing && !pressing) return <SansPressing />
 
   const rechercheNorm = recherche.trim().toLowerCase()
   const clientsFiltres = rechercheNorm

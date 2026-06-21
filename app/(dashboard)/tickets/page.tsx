@@ -53,12 +53,7 @@ function ListeTickets() {
     [recharger, rafraichissement]
   )
 
-  if (chargementPressing) return (
-    <div className="flex h-[70vh] items-center justify-center">
-      <span className="spinner spinner-dark h-8 w-8" />
-    </div>
-  )
-  if (!pressing) return <SansPressing />
+  if (!chargementPressing && !pressing) return <SansPressing />
 
   const rechercheNorm = recherche.trim().toLowerCase()
   const ticketsFiltres = rechercheNorm
