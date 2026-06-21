@@ -5,6 +5,7 @@ import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
 import { rechercherClients } from '@/hooks/useClients'
 import { createClient } from '@/lib/supabase/client'
+import { ajouterTicketHorsLigne } from '@/lib/ticketHorsLigne'
 import {
   COULEURS_VETEMENT,
   datePrevueDefaut,
@@ -68,6 +69,7 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
   const [erreur, setErreur] = useState<string | null>(null)
   const [chargement, setChargement] = useState(false)
   const [limiteAtteinte, setLimiteAtteinte] = useState(false)
+  const [horsLigneEnregistre, setHorsLigneEnregistre] = useState(false)
   const [ouvertCouleur, setOuvertCouleur] = useState<number | null>(null)
 
   const montantTotal = articles.reduce((s, a) => s + a.quantite * a.prix_unitaire, 0)
@@ -151,6 +153,36 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
     setArticles((prev) => prev.filter((_, i) => i !== index))
   }
 
+  function payeValide() {
+    const paye = montantPaye === '' ? 0 : parseInt(montantPaye, 10)
+    return Number.isNaN(paye) ? 0 : Math.max(0, paye)
+  }
+
+  function mettreEnFileHorsLigne() {
+    const articlesValides = articles.filter((a) => a.type_article.trim() !== '')
+    ajouterTicketHorsLigne({
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+      pressingId,
+      client: clientChoisi
+        ? { existant: true, id: clientChoisi.id }
+        : { existant: false, nom: nouveauNom.trim(), telephone: normaliserTelephone(rechercheTel) },
+      articles: articlesValides.map((a) => ({
+        type_article: a.type_article.trim(),
+        quantite: a.quantite,
+        prix_unitaire: a.prix_unitaire,
+        couleur: a.couleur ?? null,
+      })),
+      montantTotal,
+      montantPaye: payeValide(),
+      modePaiement,
+      datePrevue,
+      notes: notes.trim() || null,
+    })
+    setHorsLigneEnregistre(true)
+    setChargement(false)
+  }
+
   async function soumettre(e: FormEvent) {
     e.preventDefault()
     setErreur(null)
@@ -194,6 +226,12 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
     }
 
     setChargement(true)
+
+    // Hors ligne → on enfile directement sans appel réseau
+    if (!navigator.onLine) {
+      mettreEnFileHorsLigne()
+      return
+    }
 
     try {
       // --- Vérification du plan (limite 20 tickets/mois en gratuit) ---
@@ -274,6 +312,11 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
 
       router.push(`/tickets/${ticket.id as string}?nouveau=1`)
     } catch {
+      // Erreur réseau → enregistrement hors ligne
+      if (!navigator.onLine) {
+        mettreEnFileHorsLigne()
+        return
+      }
       setErreur("L'enregistrement du dépôt a échoué. Vérifiez votre réseau et réessayez.")
       setChargement(false)
     }
@@ -712,6 +755,45 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           <div className="hidden lg:sticky lg:top-4 lg:col-span-2 lg:block">{catalogue}</div>
         </div>
       </form>
+
+      {/* ---- Confirmation ticket enregistré hors ligne ---- */}
+      {horsLigneEnregistre && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div className="w-full max-w-md rounded-card bg-white p-5 text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-3xl">
+              📵
+            </div>
+            <h3 className="mb-1 text-lg font-bold text-gray-800">Ticket enregistré hors ligne</h3>
+            <p className="mb-4 text-sm text-gray-500">
+              Il sera synchronisé automatiquement dès que vous aurez du réseau.
+            </p>
+            <div className="space-y-2">
+              <Button
+                pleineLargeur
+                onClick={() => {
+                  setHorsLigneEnregistre(false)
+                  // Réinitialiser le formulaire
+                  setClientChoisi(null)
+                  setNouveauNom('')
+                  setRechercheTel('')
+                  setCreerNouveau(false)
+                  setArticles([])
+                  setMontantPaye('')
+                  setNotes('')
+                  setDatePrevue(datePrevueDefaut())
+                }}
+              >
+                Créer un autre ticket
+              </Button>
+              <Link href="/tickets" className="block">
+                <Button variante="ghost" pleineLargeur>
+                  Voir les tickets
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ---- Modale limite du plan gratuit ---- */}
       {limiteAtteinte && (
