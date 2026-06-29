@@ -58,14 +58,40 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   const smsTexte = messageSmsPret(ticket.client?.nom ?? 'cher client', pressing.nom, ticket.numero)
   const nbPieces = (ticket.articles ?? []).reduce((s, a) => s + a.quantite, 0)
 
-  /** Récapitulatif du ticket envoyé sur le WhatsApp du client. */
-  const messageWhatsAppTicket =
+  /** Récapitulatif complet du ticket — même niveau de détail que le PDF. */
+  const messageWhatsAppTicket = [
+    `🧺 *${ticket.numero} — ${pressing.nom}*`,
+    '',
+    `Bonjour ${ticket.client?.nom ?? 'cher client'},`,
     ticket.statut === 'pret'
-      ? smsTexte
-      : `Bonjour ${ticket.client?.nom ?? ''}, votre dépôt ${ticket.numero} au ${pressing.nom} : ` +
-        `${nbPieces} pièce${nbPieces > 1 ? 's' : ''}, total ${formatFCFA(ticket.montant_total)}` +
-        (resteAPayer > 0 ? ` (reste à payer ${formatFCFA(resteAPayer)})` : '') +
-        `. Retrait prévu le ${formatDate(ticket.date_prevue)}. Merci de votre confiance !`
+      ? 'Votre linge est *prêt* ! Vous pouvez venir le récupérer.'
+      : 'Voici le récapitulatif de votre dépôt.',
+    '',
+    `📅 Déposé le : ${formatDateHeure(ticket.date_depot)}`,
+    `📅 Retrait prévu : ${formatDate(ticket.date_prevue)}`,
+    ticket.date_recuperation
+      ? `✅ Récupéré le : ${formatDateHeure(ticket.date_recuperation)}`
+      : null,
+    '',
+    `*Articles (${nbPieces} pièce${nbPieces > 1 ? 's' : ''}) :*`,
+    ...(ticket.articles ?? []).map(
+      (a) =>
+        `• ${a.quantite} × ${a.type_article}${a.couleur ? ` (${a.couleur})` : ''} — ${formatFCFA(a.sous_total)}`
+    ),
+    '',
+    `*Total : ${formatFCFA(ticket.montant_total)}*`,
+    ticket.montant_paye > 0 ? `Payé : ${formatFCFA(ticket.montant_paye)}` : null,
+    resteAPayer > 0
+      ? `⚠️ Reste à payer : *${formatFCFA(resteAPayer)}*`
+      : '✅ Entièrement soldé',
+    ticket.mode_paiement ? `Paiement : ${MODE_PAIEMENT_LABELS[ticket.mode_paiement]}` : null,
+    ticket.notes ? `\n📝 ${ticket.notes}` : null,
+    '',
+    pressing.telephone ? `📞 ${pressing.telephone}` : null,
+    'Merci de votre confiance 🙏',
+  ]
+    .filter((l): l is string => l !== null)
+    .join('\n')
 
   /** Télécharge le ticket en PDF A4. */
   async function telechargerPdf() {
