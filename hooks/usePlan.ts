@@ -12,7 +12,7 @@ interface PlanResult {
   planAutorise: (planMinimum: Plan) => boolean
 }
 
-const ORDRE: Plan[] = ['gratuit', 'pro', 'reseau']
+const ORDRE: Plan[] = ['gratuit', 'pro', 'business', 'reseau']
 
 /**
  * Plan actif du propriétaire identifié par `ownerId`.

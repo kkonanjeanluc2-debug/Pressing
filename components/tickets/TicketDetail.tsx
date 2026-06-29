@@ -155,14 +155,18 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
     setErreur(null)
     const supabase = createClient()
 
+    const maj: Record<string, unknown> = {
+      montant_paye: ticket.montant_paye + montant,
+      mode_paiement: modeEncaissement,
+    }
+    if (ticket.statut !== 'recupere') {
+      maj.statut = 'recupere'
+      maj.date_recuperation = new Date().toISOString()
+    }
+
     const { error: erreurMaj } = await supabase
       .from('tickets')
-      .update({
-        montant_paye: ticket.montant_paye + montant,
-        mode_paiement: modeEncaissement,
-        statut: 'recupere',
-        date_recuperation: new Date().toISOString(),
-      })
+      .update(maj)
       .eq('id', ticket.id)
 
     if (erreurMaj) {
@@ -416,13 +420,27 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         )}
 
 {ticket.statut === 'recupere' && (
-          <p className="text-center text-sm text-gray-400">
-            Ticket clôturé
-            {ticket.date_recuperation
-              ? ` — récupéré le ${formatDateHeure(ticket.date_recuperation)}`
-              : ''}{' '}
-            🧾
-          </p>
+          <>
+            {resteAPayer > 0 && peut('encaisser') ? (
+              <Button
+                pleineLargeur
+                onClick={() => {
+                  setMontantRecu(String(resteAPayer))
+                  setModalEncaissement(true)
+                }}
+              >
+                💰 Encaisser le solde restant ({formatFCFA(resteAPayer)})
+              </Button>
+            ) : (
+              <p className="text-center text-sm text-gray-400">
+                Ticket clôturé
+                {ticket.date_recuperation
+                  ? ` — récupéré le ${formatDateHeure(ticket.date_recuperation)}`
+                  : ''}{' '}
+                🧾
+              </p>
+            )}
+          </>
         )}
       </div>
 
@@ -486,7 +504,9 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
       {modalEncaissement && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
           <div className="w-full max-w-md space-y-4 rounded-card bg-white p-5">
-            <h3 className="text-lg font-bold text-pressci-dark">Encaissement final</h3>
+            <h3 className="text-lg font-bold text-pressci-dark">
+            {ticket.statut === 'recupere' ? 'Encaisser le solde restant' : 'Encaissement final'}
+          </h3>
             <p className="text-sm text-gray-600">
               Reste à payer : <strong>{formatFCFA(resteAPayer)}</strong>
             </p>
@@ -534,7 +554,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
 
             <div className="space-y-2">
               <Button pleineLargeur chargement={enCours} onClick={() => void encaisser()}>
-                Encaisser et clôturer
+                {ticket.statut === 'recupere' ? 'Encaisser' : 'Encaisser et clôturer'}
               </Button>
               <Button variante="ghost" pleineLargeur onClick={() => setModalEncaissement(false)}>
                 Annuler

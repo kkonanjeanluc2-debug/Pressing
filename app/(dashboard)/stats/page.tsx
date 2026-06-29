@@ -167,7 +167,7 @@ export default function StatsPage() {
     'Impossible de charger les statistiques. Vérifiez votre réseau.'
   )
 
-  const { planAutorise, chargement: chargementPlan } = usePlan(pressings[0]?.owner_id ?? null)
+  const { planAutorise, chargement: chargementPlan } = usePlan(pressing?.owner_id ?? null)
 
   // Tous les hooks AVANT les early returns
   const encaissements = donnees?.encaissements ?? []
@@ -206,11 +206,10 @@ export default function StatsPage() {
   const totalPeriode = encaissements.reduce((s, e) => s + e.montant, 0)
 
   // Early returns après tous les hooks
-  if (!chargementPressing && !pressing) return <SansPressing />
-
-  if (!chargementPlan && !planAutorise('pro')) {
-    return <BlocagePlan planRequis="pro" fonctionnalite="Les statistiques avancées" />
-  }
+  if (chargementPressing) return <div className="flex justify-center py-16"><span className="spinner spinner-dark h-8 w-8" /></div>
+  if (!pressing) return <SansPressing />
+  if (chargementPlan) return <div className="flex justify-center py-16"><span className="spinner spinner-dark h-8 w-8" /></div>
+  if (!planAutorise('pro')) return <BlocagePlan planRequis="pro" fonctionnalite="Les statistiques avancées" />
 
   if (!chargementProfil && !peut('voir_stats')) {
     return (
