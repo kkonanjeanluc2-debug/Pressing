@@ -17,6 +17,7 @@ import {
   formatHeure,
   MODE_PAIEMENT_LABELS,
   messageSmsPret,
+  nomCouleur,
   STATUT_LABELS,
 } from '@/lib/utils'
 import type { ModePaiement, Pressing, Ticket } from '@/types'
@@ -76,7 +77,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
     `*Articles (${nbPieces} pièce${nbPieces > 1 ? 's' : ''}) :*`,
     ...(ticket.articles ?? []).map(
       (a) =>
-        `• ${a.quantite} × ${a.type_article}${a.couleur ? ` (${a.couleur})` : ''} — ${formatFCFA(a.sous_total)}`
+        `• ${a.quantite} × ${a.type_article}${a.couleur ? ` (${nomCouleur(a.couleur)})` : ''} — ${formatFCFA(a.sous_total)}`
     ),
     '',
     `*Total : ${formatFCFA(ticket.montant_total)}*`,
@@ -282,7 +283,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
                   <span
                     className="inline-block h-3 w-3 shrink-0 rounded-full border border-gray-300"
                     style={{ backgroundColor: a.couleur }}
-                    title={a.couleur}
+                    title={nomCouleur(a.couleur)}
                   />
                 )}
                 {a.quantite} × {a.type_article}
@@ -628,7 +629,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
           <div key={a.id} className="flex justify-between">
             <span>
               {a.quantite} x {a.type_article}
-              {a.couleur && ` (${a.couleur})`}
+              {a.couleur && ` (${nomCouleur(a.couleur)})`}
             </span>
             <span>{a.sous_total.toLocaleString('fr-FR')}</span>
           </div>
