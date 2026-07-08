@@ -4,6 +4,7 @@ import {
   formatFCFA,
   formatHeure,
   MODE_PAIEMENT_LABELS,
+  nbVetementsArticle,
   nomCouleur,
   STATUT_LABELS,
 } from '@/lib/utils'
@@ -174,7 +175,18 @@ export async function genererTicketPdf(
 
   let yT =
     (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y + 30
-  yT += 10
+  yT += 4
+
+  // ---- Total vêtements ----
+  const totalVetements = (ticket.articles ?? []).reduce(
+    (s, a) => s + nbVetementsArticle(a.type_article, a.quantite),
+    0
+  )
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(...VERT_FONCE)
+  doc.text(`Total vêtements : ${totalVetements} pièce${totalVetements > 1 ? 's' : ''}`, 12, yT)
+  yT += 8
 
   // ---- Totaux ----
   doc.setFillColor(...VERT_CLAIR)

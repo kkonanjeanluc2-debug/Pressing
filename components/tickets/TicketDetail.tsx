@@ -17,6 +17,7 @@ import {
   formatHeure,
   MODE_PAIEMENT_LABELS,
   messageSmsPret,
+  nbVetementsArticle,
   nomCouleur,
   STATUT_LABELS,
 } from '@/lib/utils'
@@ -58,6 +59,10 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   const enRetard = estEnRetard(ticket.date_prevue, ticket.statut)
   const smsTexte = messageSmsPret(ticket.client?.nom ?? 'cher client', pressing.nom, ticket.numero)
   const nbPieces = (ticket.articles ?? []).reduce((s, a) => s + a.quantite, 0)
+  const totalVetements = (ticket.articles ?? []).reduce(
+    (s, a) => s + nbVetementsArticle(a.type_article, a.quantite),
+    0
+  )
 
   /** Récapitulatif complet du ticket — même niveau de détail que le PDF. */
   const messageWhatsAppTicket = [
@@ -74,7 +79,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
       ? `✅ Récupéré le : ${formatDateHeure(ticket.date_recuperation)}`
       : null,
     '',
-    `*Articles (${nbPieces} pièce${nbPieces > 1 ? 's' : ''}) :*`,
+    `*Articles (${totalVetements} vêtement${totalVetements > 1 ? 's' : ''}) :*`,
     ...(ticket.articles ?? []).map(
       (a) =>
         `• ${a.quantite} × ${a.type_article}${a.couleur ? ` (${nomCouleur(a.couleur)})` : ''} — ${formatFCFA(a.sous_total)}`
@@ -295,7 +300,13 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
 
         {/* Totaux */}
         <div className="space-y-1 pt-3 text-sm">
-          <div className="flex justify-between">
+          <div className="flex justify-between border-b border-dashed border-gray-200 pb-2">
+            <span className="text-gray-500">Total vêtements</span>
+            <span className="font-medium text-pressci-dark">
+              {totalVetements} vêtement{totalVetements > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="flex justify-between pt-1">
             <span className="text-gray-500">Total</span>
             <span className="text-base font-bold text-pressci-dark">
               {formatFCFA(ticket.montant_total)}
@@ -634,6 +645,10 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
             <span>{a.sous_total.toLocaleString('fr-FR')}</span>
           </div>
         ))}
+        <div className="flex justify-between font-semibold">
+          <span>TOTAL VÊTEMENTS</span>
+          <span>{totalVetements} pcs</span>
+        </div>
         <p className="my-1 border-t border-dashed border-gray-500" />
         <div className="flex justify-between text-sm font-bold">
           <span>TOTAL</span>
