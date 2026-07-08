@@ -170,9 +170,10 @@ export function nomCouleur(hex: string): string {
  * Nombre réel de vêtements pour une ligne d'article.
  * Pour "Forfait 20 vetements" × 2 → 40. Pour tout autre article → quantite.
  */
-export function nbVetementsArticle(typeArticle: string, quantite: number): number {
+export function nbVetementsArticle(typeArticle: string | undefined, quantite: number): number {
+  if (!typeArticle) return quantite
   const m = typeArticle.match(/forfait\s+(\d+)\s+v[eê]tements?/i)
-  return m ? quantite * parseInt(m[1], 10) : quantite
+  return m ? quantite * parseInt(m[1] ?? '0', 10) : quantite
 }
 
 /** Message SMS type "linge prêt" */
