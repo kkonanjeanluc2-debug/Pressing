@@ -172,7 +172,10 @@ export function nomCouleur(hex: string): string {
  */
 export function nbVetementsArticle(typeArticle: string | undefined, quantite: number): number {
   if (!typeArticle) return quantite
-  const m = typeArticle.match(/forfait\s+(\d+)\s+v[eê]tements?/i)
+  const n = typeArticle.toLowerCase()
+  const isForfait = n.includes('forfait') || n.includes('formule') || n.includes('pack')
+  if (!isForfait) return quantite
+  const m = typeArticle.match(/(\d+)/)
   return m ? quantite * parseInt(m[1] ?? '0', 10) : quantite
 }
 
