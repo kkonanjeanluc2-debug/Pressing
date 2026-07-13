@@ -76,13 +76,60 @@ export default function AdminUtilisateursPage() {
 
   /* ── Reset mot de passe ── */
   const [modaleReset, setModaleReset] = useState<UtilisateurAdmin | null>(null)
+  const [modeMdp, setModeMdp] = useState<'direct' | 'lien'>('direct')
+  // Mode direct
+  const [nouveauMdp, setNouveauMdp] = useState('')
+  const [confirmerMdp, setConfirmerMdp] = useState('')
+  const [showMdp, setShowMdp] = useState(false)
+  const [changeMdpEnCours, setChangeMdpEnCours] = useState(false)
+  const [changeMdpErreur, setChangeMdpErreur] = useState<string | null>(null)
+  // Mode lien
   const [lienReset, setLienReset] = useState<string | null>(null)
   const [resetEnCours, setResetEnCours] = useState(false)
   const [resetErreur, setResetErreur] = useState<string | null>(null)
   const [copie, setCopie] = useState(false)
 
-  async function genererLienReset(user: UtilisateurAdmin) {
+  function ouvrirModalReset(user: UtilisateurAdmin) {
     setModaleReset(user)
+    setModeMdp('direct')
+    setNouveauMdp('')
+    setConfirmerMdp('')
+    setShowMdp(false)
+    setLienReset(null)
+    setResetErreur(null)
+    setChangeMdpErreur(null)
+    setCopie(false)
+  }
+
+  async function changerMdp() {
+    if (!modaleReset) return
+    if (nouveauMdp.length < 6) {
+      setChangeMdpErreur('Le mot de passe doit contenir au moins 6 caractères.')
+      return
+    }
+    if (nouveauMdp !== confirmerMdp) {
+      setChangeMdpErreur('Les mots de passe ne correspondent pas.')
+      return
+    }
+    setChangeMdpEnCours(true)
+    setChangeMdpErreur(null)
+    const res = await fetch('/api/admin/changer-mdp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: modaleReset.user_id, mot_de_passe: nouveauMdp }),
+    })
+    const data = (await res.json()) as { succes: boolean; erreur?: string }
+    if (data.succes) {
+      setMessageGlobal(`✅ Mot de passe de ${modaleReset.nom} modifié avec succès.`)
+      setModaleReset(null)
+    } else {
+      setChangeMdpErreur(data.erreur ?? 'Erreur inconnue.')
+    }
+    setChangeMdpEnCours(false)
+  }
+
+  async function genererLienReset() {
+    if (!modaleReset) return
     setLienReset(null)
     setResetErreur(null)
     setCopie(false)
@@ -90,7 +137,7 @@ export default function AdminUtilisateursPage() {
     const res = await fetch('/api/admin/reset-mdp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: user.email }),
+      body: JSON.stringify({ email: modaleReset.email }),
     })
     const data = (await res.json()) as { succes: boolean; lien?: string; erreur?: string }
     if (data.succes) {
@@ -285,8 +332,8 @@ export default function AdminUtilisateursPage() {
                         {/* Reset MDP */}
                         <button
                           type="button"
-                          onClick={() => void genererLienReset(u)}
-                          title="Réinitialiser le mot de passe"
+                          onClick={() => ouvrirModalReset(u)}
+                          title="Modifier le mot de passe"
                           className="rounded-lg bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-600 transition-colors hover:bg-orange-500 hover:text-white"
                         >
                           🔑 Reset MDP
@@ -433,56 +480,143 @@ export default function AdminUtilisateursPage() {
       {modaleReset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="mb-1 text-lg font-bold text-gray-900">Réinitialiser le mot de passe</h2>
-            <p className="mb-5 text-sm text-gray-500">
+            <h2 className="mb-1 text-lg font-bold text-gray-900">Modifier le mot de passe</h2>
+            <p className="mb-4 text-sm text-gray-500">
               Utilisateur :{' '}
               <strong className="text-gray-800">
                 {modaleReset.nom} ({modaleReset.email})
               </strong>
             </p>
 
-            {resetEnCours && (
-              <div className="flex justify-center py-4">
-                <span className="spinner spinner-dark h-7 w-7" />
+            {/* Onglets */}
+            <div className="mb-5 flex rounded-xl bg-gray-100 p-1">
+              <button
+                type="button"
+                onClick={() => { setModeMdp('direct'); setChangeMdpErreur(null) }}
+                className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
+                  modeMdp === 'direct' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                🔒 Définir directement
+              </button>
+              <button
+                type="button"
+                onClick={() => { setModeMdp('lien'); setLienReset(null); setResetErreur(null) }}
+                className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
+                  modeMdp === 'lien' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                🔗 Lien de réinitialisation
+              </button>
+            </div>
+
+            {/* Mode : définir directement */}
+            {modeMdp === 'direct' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Nouveau mot de passe
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showMdp ? 'text' : 'password'}
+                      value={nouveauMdp}
+                      onChange={(e) => setNouveauMdp(e.target.value)}
+                      placeholder="Minimum 6 caractères"
+                      className="w-full rounded-xl border border-gray-300 px-3 py-2.5 pr-10 text-sm outline-none focus:border-pressci-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowMdp(!showMdp)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showMdp ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                    Confirmer le mot de passe
+                  </label>
+                  <input
+                    type={showMdp ? 'text' : 'password'}
+                    value={confirmerMdp}
+                    onChange={(e) => setConfirmerMdp(e.target.value)}
+                    placeholder="Répétez le mot de passe"
+                    className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-pressci-primary"
+                  />
+                </div>
+                {changeMdpErreur && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                    {changeMdpErreur}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void changerMdp()}
+                  disabled={changeMdpEnCours || !nouveauMdp}
+                  className="w-full rounded-full bg-pressci-primary py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                >
+                  {changeMdpEnCours ? 'Modification…' : 'Définir ce mot de passe'}
+                </button>
               </div>
             )}
-            {resetErreur && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{resetErreur}</p>
-            )}
-            {lienReset && !resetEnCours && (
+
+            {/* Mode : lien de réinitialisation */}
+            {modeMdp === 'lien' && (
               <div className="space-y-3">
-                <p className="text-sm text-gray-600">
-                  Lien de réinitialisation généré. Partagez-le avec l'utilisateur — il expire sous
-                  peu (24 h).
-                </p>
-                <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                  <span className="min-w-0 flex-1 truncate font-mono text-xs text-gray-600">
-                    {lienReset}
-                  </span>
+                {!lienReset && !resetEnCours && (
                   <button
                     type="button"
-                    onClick={() => void copierLien()}
-                    className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      copie
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-pressci-primary text-white hover:bg-pressci-dark'
-                    }`}
+                    onClick={() => void genererLienReset()}
+                    className="w-full rounded-full bg-orange-500 py-2.5 text-sm font-bold text-white hover:bg-orange-600"
                   >
-                    {copie ? '✓ Copié' : 'Copier'}
+                    Générer un lien de réinitialisation
                   </button>
-                </div>
-                <a
-                  href={`mailto:${modaleReset.email}?subject=Réinitialisation de votre mot de passe Pressing Ivoire&body=Bonjour ${modaleReset.nom},%0A%0AVoici votre lien de réinitialisation de mot de passe :%0A${encodeURIComponent(lienReset)}%0A%0ACe lien expire dans 24 heures.%0A%0ACordialement`}
-                  className="block text-center text-xs font-semibold text-pressci-primary hover:underline"
-                >
-                  📧 Envoyer par e-mail à {modaleReset.email}
-                </a>
+                )}
+                {resetEnCours && (
+                  <div className="flex justify-center py-4">
+                    <span className="spinner spinner-dark h-7 w-7" />
+                  </div>
+                )}
+                {resetErreur && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{resetErreur}</p>
+                )}
+                {lienReset && !resetEnCours && (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      Lien généré — expire dans 24 h. Partagez-le avec l'utilisateur.
+                    </p>
+                    <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                      <span className="min-w-0 flex-1 truncate font-mono text-xs text-gray-600">
+                        {lienReset}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void copierLien()}
+                        className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          copie
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-pressci-primary text-white hover:bg-pressci-dark'
+                        }`}
+                      >
+                        {copie ? '✓ Copié' : 'Copier'}
+                      </button>
+                    </div>
+                    <a
+                      href={`mailto:${modaleReset.email}?subject=Réinitialisation de votre mot de passe Pressing Ivoire&body=Bonjour ${modaleReset.nom},%0A%0AVoici votre lien de réinitialisation de mot de passe :%0A${encodeURIComponent(lienReset)}%0A%0ACe lien expire dans 24 heures.%0A%0ACordialement`}
+                      className="block text-center text-xs font-semibold text-pressci-primary hover:underline"
+                    >
+                      📧 Envoyer par e-mail à {modaleReset.email}
+                    </a>
+                  </>
+                )}
               </div>
             )}
 
             <button
               type="button"
-              onClick={() => { setModaleReset(null); setLienReset(null) }}
+              onClick={() => { setModaleReset(null); setLienReset(null); setNouveauMdp(''); setConfirmerMdp('') }}
               className="mt-5 w-full rounded-full border border-gray-300 py-2.5 text-sm font-semibold text-gray-600"
             >
               Fermer
