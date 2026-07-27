@@ -35,6 +35,7 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
   )
   const [datePrevue, setDatePrevue] = useState(() => toInputDate(new Date(ticket.date_prevue)))
   const [modePaiement, setModePaiement] = useState<ModePaiement>(ticket.mode_paiement ?? 'cash')
+  const [montantPaye, setMontantPaye] = useState(String(ticket.montant_paye))
   const [notes, setNotes] = useState(ticket.notes ?? '')
 
   const [tarifs, setTarifs] = useState<Tarif[]>([])
@@ -94,11 +95,20 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
       setErreur('Ajoutez au moins un article.')
       return
     }
+    const paye = montantPaye === '' ? 0 : parseInt(montantPaye, 10)
+    if (Number.isNaN(paye) || paye < 0) {
+      setErreur('Le montant payé est invalide.')
+      return
+    }
+    if (paye > montantTotal) {
+      setErreur('Le montant payé ne peut pas dépasser le total.')
+      return
+    }
+
     setChargement(true)
     setErreur(null)
 
-    // Si le montant payé dépasse le nouveau total, on le plafonne
-    const montantPayeAjuste = Math.min(ticket.montant_paye, montantTotal)
+    const montantPayeAjuste = paye
 
     const { error: errTicket } = await supabase
       .from('tickets')
@@ -362,17 +372,32 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
             )}
           </div>
 
-          {/* Date prévue */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Date prévue de retrait
-            </label>
-            <input
-              type="date"
-              value={datePrevue}
-              onChange={(e) => setDatePrevue(e.target.value)}
-              className="w-full rounded-card border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-pressci-primary"
-            />
+          {/* Date prévue + Montant payé */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Date prévue de retrait
+              </label>
+              <input
+                type="date"
+                value={datePrevue}
+                onChange={(e) => setDatePrevue(e.target.value)}
+                className="w-full rounded-card border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-pressci-primary"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Montant payé à la dépose (FCFA)
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={montantPaye}
+                onChange={(e) => setMontantPaye(e.target.value)}
+                placeholder="0"
+                className="w-full rounded-card border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-pressci-primary"
+              />
+            </div>
           </div>
 
           {/* Mode de paiement */}
