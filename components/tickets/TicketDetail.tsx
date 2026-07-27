@@ -3,6 +3,7 @@
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
+import TicketEditModal from '@/components/tickets/TicketEditModal'
 import { usePlan } from '@/hooks/usePlan'
 import { useProfil } from '@/hooks/useProfil'
 import { useProfilProprietaire } from '@/hooks/useProfilProprietaire'
@@ -44,6 +45,7 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
   const { proprietaire } = useProfilProprietaire(pressing.owner_id)
   const { planAutorise } = usePlan(pressing.owner_id)
   const [modaleUpgrade, setModaleUpgrade] = useState(false)
+  const [modalModifier, setModalModifier] = useState(false)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -344,6 +346,17 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         )}
       </Card>
 
+      {/* ---- Modifier le ticket ---- */}
+      {peut('modifier_tickets') && ticket.statut !== 'annule' && (
+        <button
+          type="button"
+          onClick={() => setModalModifier(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-card border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 active:bg-gray-50"
+        >
+          ✏️ Modifier le ticket
+        </button>
+      )}
+
       {/* ---- Export et partage ---- */}
       <div className="grid grid-cols-3 gap-2">
         <button
@@ -600,6 +613,16 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
             </div>
           </div>
         </div>
+      )}
+
+      {/* ---- Modale : modifier le ticket ---- */}
+      {modalModifier && (
+        <TicketEditModal
+          ticket={ticket}
+          pressing={pressing}
+          onClose={() => setModalModifier(false)}
+          onSuccess={recharger}
+        />
       )}
     </div>
 

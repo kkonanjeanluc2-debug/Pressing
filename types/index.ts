@@ -148,6 +148,7 @@ export interface PermissionsAgent {
   voir_caisse: boolean
   voir_stats: boolean
   gerer_depenses: boolean
+  modifier_tickets: boolean
 }
 
 export interface Agent {
@@ -171,6 +172,7 @@ export const PERMISSIONS_DEFAUT: PermissionsAgent = {
   voir_caisse: false,
   voir_stats: false,
   gerer_depenses: false,
+  modifier_tickets: false,
 }
 
 export const PERMISSIONS_LABELS: Record<keyof PermissionsAgent, string> = {
@@ -183,6 +185,7 @@ export const PERMISSIONS_LABELS: Record<keyof PermissionsAgent, string> = {
   voir_caisse: 'Voir la caisse du jour',
   voir_stats: 'Voir les rapports',
   gerer_depenses: 'Saisir les dépenses (comptabilité)',
+  modifier_tickets: 'Modifier des tickets existants',
 }
 
 export interface DashboardStats {
