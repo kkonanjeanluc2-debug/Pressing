@@ -6,8 +6,10 @@ import {
   COULEURS_VETEMENT,
   emojiArticle,
   formatFCFA,
+  labelPrestation,
   MODE_PAIEMENT_LABELS,
   nomCouleur,
+  PRESTATIONS,
   toInputDate,
 } from '@/lib/utils'
 import type { ArticleFormItem, ModePaiement, Pressing, Tarif, Ticket } from '@/types'
@@ -31,6 +33,7 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
       quantite: a.quantite,
       prix_unitaire: a.prix_unitaire,
       couleur: a.couleur ?? undefined,
+      prestation: a.prestation ?? undefined,
     }))
   )
   const [datePrevue, setDatePrevue] = useState(() => toInputDate(new Date(ticket.date_prevue)))
@@ -44,7 +47,20 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
   const [erreur, setErreur] = useState<string | null>(null)
   const [chargement, setChargement] = useState(false)
 
-  const montantTotal = articles.reduce((s, a) => s + a.quantite * a.prix_unitaire, 0)
+  // Réduction
+  const [reductionActive, setReductionActive] = useState(() => (ticket.reduction ?? 0) > 0)
+  const [reductionType, setReductionType] = useState<'pct' | 'montant'>('montant')
+  const [reductionValeur, setReductionValeur] = useState(() => String(ticket.reduction ?? 0) === '0' ? '' : String(ticket.reduction ?? 0))
+
+  const montantBrut = articles.reduce((s, a) => s + a.quantite * a.prix_unitaire, 0)
+  const reductionMontant = (() => {
+    if (!reductionActive || !reductionValeur) return 0
+    const v = parseInt(reductionValeur, 10) || 0
+    return reductionType === 'pct'
+      ? Math.round(montantBrut * Math.min(v, 100) / 100)
+      : Math.min(v, montantBrut)
+  })()
+  const montantTotal = montantBrut - reductionMontant
   const nbPieces = articles.reduce((s, a) => s + a.quantite, 0)
 
   useEffect(() => {
@@ -115,6 +131,7 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
       .update({
         montant_total: montantTotal,
         montant_paye: montantPayeAjuste,
+        reduction: reductionMontant,
         date_prevue: new Date(`${datePrevue}T18:00:00`).toISOString(),
         mode_paiement: modePaiement,
         notes: notes.trim() || null,
@@ -136,6 +153,7 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
         prix_unitaire: a.prix_unitaire,
         sous_total: a.quantite * a.prix_unitaire,
         couleur: a.couleur ?? null,
+        prestation: a.prestation ?? null,
       }))
     )
 
@@ -280,6 +298,24 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
                       >✕</button>
                     </div>
 
+                    {/* Prestation */}
+                    <div className="mb-2 flex flex-wrap gap-1">
+                      {PRESTATIONS.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => majLigne(i, { prestation: article.prestation === p.id ? undefined : p.id })}
+                          className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                            article.prestation === p.id
+                              ? 'border-pressci-primary bg-pressci-light text-pressci-primary'
+                              : 'border-gray-200 text-gray-400 hover:border-pressci-primary hover:text-pressci-primary'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
                         <input
@@ -372,6 +408,50 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
             )}
           </div>
 
+          {/* Réduction */}
+          {articles.length > 0 && (
+            <div className="border-t border-dashed border-gray-200 pt-3">
+              <button
+                type="button"
+                onClick={() => { setReductionActive(!reductionActive); setReductionValeur('') }}
+                className={`text-sm font-semibold ${reductionActive ? 'text-red-600' : 'text-pressci-primary'}`}
+              >
+                {reductionActive ? '✕ Supprimer la réduction' : '+ Appliquer une réduction'}
+              </button>
+              {reductionActive && (
+                <div className="mt-2 space-y-2">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setReductionType('pct'); setReductionValeur('') }}
+                      className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${reductionType === 'pct' ? 'border-pressci-primary bg-pressci-light text-pressci-primary' : 'border-gray-300 text-gray-600'}`}
+                    >% Pourcentage</button>
+                    <button
+                      type="button"
+                      onClick={() => { setReductionType('montant'); setReductionValeur('') }}
+                      className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${reductionType === 'montant' ? 'border-pressci-primary bg-pressci-light text-pressci-primary' : 'border-gray-300 text-gray-600'}`}
+                    >F Montant fixe</button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={reductionType === 'pct' ? 100 : montantBrut}
+                      value={reductionValeur}
+                      onChange={(e) => setReductionValeur(e.target.value)}
+                      placeholder={reductionType === 'pct' ? 'Ex : 10' : 'Ex : 500'}
+                      className="w-28 rounded-card border border-gray-300 px-3 py-2 text-sm outline-none focus:border-pressci-primary"
+                    />
+                    <span className="text-sm text-gray-500">{reductionType === 'pct' ? '%' : 'FCFA'}</span>
+                    {reductionMontant > 0 && (
+                      <span className="text-sm font-semibold text-red-600">= −{reductionMontant.toLocaleString('fr-FR')} FCFA</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Date prévue + Montant payé */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
@@ -447,6 +527,9 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
               <p className="text-xs opacity-70">
                 {nbPieces} pièce{nbPieces > 1 ? 's' : ''} · Nouveau total
               </p>
+              {reductionMontant > 0 && (
+                <p className="text-xs line-through opacity-40">{formatFCFA(montantBrut)}</p>
+              )}
               <p className="text-xl font-bold text-pressci-accent">{formatFCFA(montantTotal)}</p>
             </div>
             <Button chargement={chargement} onClick={() => void sauvegarder()} className="shrink-0">

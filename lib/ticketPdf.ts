@@ -3,6 +3,7 @@ import {
   formatDateHeure,
   formatFCFA,
   formatHeure,
+  labelPrestation,
   MODE_PAIEMENT_LABELS,
   nbVetementsArticle,
   nomCouleur,
@@ -156,12 +157,13 @@ export async function genererTicketPdf(
   autoTable(doc, {
     startY: y,
     head: [['Article', 'Qté', 'Prix unitaire', 'Sous-total']],
-    body: (ticket.articles ?? []).map((a) => [
-      a.couleur ? `${a.type_article} (${nomCouleur(a.couleur)})` : a.type_article,
-      String(a.quantite),
-      formatFCFA(a.prix_unitaire),
-      formatFCFA(a.sous_total),
-    ]),
+    body: (ticket.articles ?? []).map((a) => {
+      const nom = [
+        a.couleur ? `${a.type_article} (${nomCouleur(a.couleur)})` : a.type_article,
+        a.prestation ? labelPrestation(a.prestation) : null,
+      ].filter(Boolean).join(' — ')
+      return [nom, String(a.quantite), formatFCFA(a.prix_unitaire), formatFCFA(a.sous_total)]
+    }),
     headStyles: { fillColor: VERT, fontStyle: 'bold' },
     columnStyles: {
       1: { halign: 'center', cellWidth: 18 },
@@ -187,6 +189,19 @@ export async function genererTicketPdf(
   doc.setTextColor(...VERT_FONCE)
   doc.text(`Total vêtements : ${totalVetements} pièce${totalVetements > 1 ? 's' : ''}`, 12, yT)
   yT += 8
+
+  // ---- Réduction ----
+  if ((ticket.reduction ?? 0) > 0) {
+    const sousTotal = ticket.montant_total + (ticket.reduction ?? 0)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(80)
+    doc.text(`Sous-total : ${formatFCFA(sousTotal)}`, 194, yT, { align: 'right' })
+    yT += 5
+    doc.setTextColor(180, 60, 0)
+    doc.text(`Réduction : −${formatFCFA(ticket.reduction ?? 0)}`, 194, yT, { align: 'right' })
+    yT += 5
+  }
 
   // ---- Totaux ----
   doc.setFillColor(...VERT_CLAIR)

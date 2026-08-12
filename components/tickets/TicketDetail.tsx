@@ -16,6 +16,7 @@ import {
   formatDateHeure,
   formatFCFA,
   formatHeure,
+  labelPrestation,
   MODE_PAIEMENT_LABELS,
   messageSmsPret,
   nbVetementsArticle,
@@ -284,18 +285,25 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
         {/* Articles */}
         <div className="space-y-2 border-b border-dashed border-gray-200 py-3">
           {(ticket.articles ?? []).map((a) => (
-            <div key={a.id} className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-1.5">
-                {a.couleur && (
-                  <span
-                    className="inline-block h-3 w-3 shrink-0 rounded-full border border-gray-300"
-                    style={{ backgroundColor: a.couleur }}
-                    title={nomCouleur(a.couleur)}
-                  />
+            <div key={a.id} className="flex items-start justify-between gap-2 text-sm">
+              <span className="flex flex-col gap-0.5">
+                <span className="flex items-center gap-1.5">
+                  {a.couleur && (
+                    <span
+                      className="inline-block h-3 w-3 shrink-0 rounded-full border border-gray-300"
+                      style={{ backgroundColor: a.couleur }}
+                      title={nomCouleur(a.couleur)}
+                    />
+                  )}
+                  {a.quantite} × {a.type_article}
+                </span>
+                {a.prestation && (
+                  <span className="ml-4 text-xs font-medium text-pressci-primary">
+                    {labelPrestation(a.prestation)}
+                  </span>
                 )}
-                {a.quantite} × {a.type_article}
               </span>
-              <span className="font-medium">{formatFCFA(a.sous_total)}</span>
+              <span className="shrink-0 font-medium">{formatFCFA(a.sous_total)}</span>
             </div>
           ))}
         </div>
@@ -308,6 +316,20 @@ export default function TicketDetail({ ticket, pressing, recharger, nouveauticke
               {totalVetements} vêtement{totalVetements > 1 ? 's' : ''}
             </span>
           </div>
+          {(ticket.reduction ?? 0) > 0 && (
+            <div className="flex justify-between pt-1">
+              <span className="text-gray-500">Sous-total</span>
+              <span className="font-medium text-gray-500">
+                {formatFCFA(ticket.montant_total + (ticket.reduction ?? 0))}
+              </span>
+            </div>
+          )}
+          {(ticket.reduction ?? 0) > 0 && (
+            <div className="flex justify-between">
+              <span className="text-red-600">Réduction</span>
+              <span className="font-semibold text-red-600">−{formatFCFA(ticket.reduction ?? 0)}</span>
+            </div>
+          )}
           <div className="flex justify-between pt-1">
             <span className="text-gray-500">Total</span>
             <span className="text-base font-bold text-pressci-dark">

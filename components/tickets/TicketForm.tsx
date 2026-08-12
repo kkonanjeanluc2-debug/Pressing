@@ -11,9 +11,11 @@ import {
   datePrevueDefaut,
   emojiArticle,
   formatFCFA,
+  labelPrestation,
   MODE_PAIEMENT_LABELS,
   nomCouleur,
   normaliserTelephone,
+  PRESTATIONS,
   validerTelephone,
 } from '@/lib/utils'
 import type { ArticleFormItem, Client, ModePaiement, Pressing, Tarif } from '@/types'
@@ -72,7 +74,20 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
   const [horsLigneEnregistre, setHorsLigneEnregistre] = useState(false)
   const [ouvertCouleur, setOuvertCouleur] = useState<number | null>(null)
 
-  const montantTotal = articles.reduce((s, a) => s + a.quantite * a.prix_unitaire, 0)
+  // Réduction
+  const [reductionActive, setReductionActive] = useState(false)
+  const [reductionType, setReductionType] = useState<'pct' | 'montant'>('pct')
+  const [reductionValeur, setReductionValeur] = useState('')
+
+  const montantBrut = articles.reduce((s, a) => s + a.quantite * a.prix_unitaire, 0)
+  const reductionMontant = (() => {
+    if (!reductionActive || !reductionValeur) return 0
+    const v = parseInt(reductionValeur, 10) || 0
+    return reductionType === 'pct'
+      ? Math.round(montantBrut * Math.min(v, 100) / 100)
+      : Math.min(v, montantBrut)
+  })()
+  const montantTotal = montantBrut - reductionMontant
   const nbPieces = articles.reduce((s, a) => s + a.quantite, 0)
 
   // Charger le catalogue de vêtements (commun à tous les pressings du propriétaire)
@@ -279,6 +294,7 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           statut: 'nouveau',
           montant_total: montantTotal,
           montant_paye: paye,
+          reduction: reductionMontant,
           mode_paiement: modePaiement,
           date_prevue: new Date(`${datePrevue}T18:00:00`).toISOString(),
           notes: notes.trim() || null,
@@ -296,6 +312,7 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           prix_unitaire: a.prix_unitaire,
           sous_total: a.quantite * a.prix_unitaire,
           couleur: a.couleur ?? null,
+          prestation: a.prestation ?? null,
         }))
       )
       if (erreurArticles) throw erreurArticles
@@ -566,7 +583,25 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                         >✕</button>
                       </div>
 
-                      {/* Ligne 2 : prix | couleur | − qté + | sous-total */}
+                      {/* Ligne 2 : prestation */}
+                      <div className="mb-2 flex flex-wrap gap-1">
+                        {PRESTATIONS.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => majLigne(i, { prestation: article.prestation === p.id ? undefined : p.id })}
+                            className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                              article.prestation === p.id
+                                ? 'border-pressci-primary bg-pressci-light text-pressci-primary'
+                                : 'border-gray-200 text-gray-400 hover:border-pressci-primary hover:text-pressci-primary'
+                            }`}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Ligne 3 : prix | couleur | − qté + | sous-total */}
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1">
                           <input
@@ -623,6 +658,50 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Réduction */}
+              {articles.length > 0 && (
+                <div className="mt-3 border-t border-dashed border-gray-200 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => { setReductionActive(!reductionActive); setReductionValeur('') }}
+                    className={`text-sm font-semibold ${reductionActive ? 'text-red-600' : 'text-pressci-primary'}`}
+                  >
+                    {reductionActive ? '✕ Supprimer la réduction' : '+ Appliquer une réduction'}
+                  </button>
+                  {reductionActive && (
+                    <div className="mt-2 space-y-2">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setReductionType('pct'); setReductionValeur('') }}
+                          className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${reductionType === 'pct' ? 'border-pressci-primary bg-pressci-light text-pressci-primary' : 'border-gray-300 text-gray-600'}`}
+                        >% Pourcentage</button>
+                        <button
+                          type="button"
+                          onClick={() => { setReductionType('montant'); setReductionValeur('') }}
+                          className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${reductionType === 'montant' ? 'border-pressci-primary bg-pressci-light text-pressci-primary' : 'border-gray-300 text-gray-600'}`}
+                        >F Montant fixe</button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={reductionType === 'pct' ? 100 : montantBrut}
+                          value={reductionValeur}
+                          onChange={(e) => setReductionValeur(e.target.value)}
+                          placeholder={reductionType === 'pct' ? 'Ex : 10' : 'Ex : 500'}
+                          className="w-28 rounded-card border border-gray-300 px-3 py-2 text-sm outline-none focus:border-pressci-primary"
+                        />
+                        <span className="text-sm text-gray-500">{reductionType === 'pct' ? '%' : 'FCFA'}</span>
+                        {reductionMontant > 0 && (
+                          <span className="text-sm font-semibold text-red-600">= −{reductionMontant.toLocaleString('fr-FR')} FCFA</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -743,6 +822,9 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                 <p className="text-xs opacity-70">
                   {nbPieces} pièce{nbPieces > 1 ? 's' : ''} · Total à payer
                 </p>
+                {reductionMontant > 0 && (
+                  <p className="text-xs line-through opacity-40">{formatFCFA(montantBrut)}</p>
+                )}
                 <p className="text-xl font-bold text-pressci-accent">{formatFCFA(montantTotal)}</p>
               </div>
               <Button type="submit" chargement={chargement} className="shrink-0">

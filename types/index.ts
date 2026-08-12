@@ -44,6 +44,7 @@ export interface Ticket {
   statut: StatutTicket
   montant_total: number
   montant_paye: number
+  reduction: number
   mode_paiement: ModePaiement | null
   date_depot: string
   date_prevue: string
@@ -64,6 +65,7 @@ export interface ArticleTicket {
   prix_unitaire: number
   sous_total: number
   couleur: string | null
+  prestation: string | null
 }
 
 export interface Tarif {
@@ -208,6 +210,7 @@ export interface ArticleFormItem {
   quantite: number
   prix_unitaire: number
   couleur?: string
+  prestation?: string
 }
 
 export interface NouveauTicketInput {

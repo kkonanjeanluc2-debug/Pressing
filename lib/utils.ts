@@ -143,6 +143,24 @@ export function emojiArticle(nom: string): string {
   return '🧺'
 }
 
+/** Types de prestation pour chaque article d'un ticket. */
+export const PRESTATIONS = [
+  { id: 'lavage',            label: 'Lavage' },
+  { id: 'repassage',         label: 'Repassage' },
+  { id: 'lavage_repassage',  label: 'Lav. + Rep.' },
+  { id: 'nettoyage_sec',     label: 'Nettoyage sec' },
+  { id: 'detachage',         label: 'Détachage' },
+  { id: 'autre',             label: 'Autre' },
+] as const
+
+export type PrestationId = typeof PRESTATIONS[number]['id']
+
+/** Libellé complet d'une prestation depuis son id. */
+export function labelPrestation(id: string | null | undefined): string {
+  if (!id) return ''
+  return PRESTATIONS.find((p) => p.id === id)?.label ?? id
+}
+
 /** Palette de couleurs pour les vêtements. */
 export const COULEURS_VETEMENT: Array<{ nom: string; hex: string; contour?: boolean }> = [
   { nom: 'Blanc', hex: '#FFFFFF', contour: true },
