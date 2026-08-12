@@ -1,6 +1,7 @@
 'use client'
 
 import GestionAgents from '@/components/pressings/GestionAgents'
+import FormuleAbonnementSection from '@/components/abonnements/FormuleAbonnementSection'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
@@ -304,6 +305,9 @@ export default function PressingDetailPage({ params }: { params: { id: string } 
 
       {/* Gestion des agents — propriétaire uniquement */}
       {role === 'proprietaire' && <GestionAgents pressingId={pressing.id} />}
+
+      {/* Formules d'abonnement — propriétaire uniquement */}
+      {role === 'proprietaire' && <FormuleAbonnementSection pressingId={pressing.id} />}
     </div>
   )
 }

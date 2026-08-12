@@ -1,5 +1,6 @@
 export type StatutTicket = 'nouveau' | 'en_traitement' | 'pret' | 'recupere' | 'annule'
 export type Plan = 'gratuit' | 'pro' | 'business' | 'reseau'
+export type StatutAboClient = 'actif' | 'epuise' | 'expire'
 export type ModePaiement =
   | 'cash'
   | 'wave'
@@ -338,6 +339,32 @@ export interface ActiviteAdmin {
     created_at: string
     pressing: string
   }>
+}
+
+export interface FormuleAbonnement {
+  id: string
+  owner_id: string
+  pressing_id: string | null
+  nom: string
+  quota_vetements: number
+  prix: number
+  actif: boolean
+  created_at: string
+}
+
+export interface AbonnementClient {
+  id: string
+  pressing_id: string
+  client_id: string
+  formule_id: string | null
+  nom_formule: string
+  quota_vetements: number
+  vetements_utilises: number
+  prix: number
+  date_debut: string
+  date_fin: string
+  statut: StatutAboClient
+  created_at: string
 }
 
 export const COMMUNES_ABIDJAN: string[] = [

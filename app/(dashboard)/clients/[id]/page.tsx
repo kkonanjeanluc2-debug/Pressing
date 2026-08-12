@@ -1,5 +1,6 @@
 'use client'
 
+import AbonnementClientSection from '@/components/abonnements/AbonnementClientSection'
 import TicketCard from '@/components/tickets/TicketCard'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -108,6 +109,12 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       {messageOk && (
         <p className="rounded-card bg-green-50 px-3 py-2 text-sm text-green-700">{messageOk}</p>
       )}
+
+      <AbonnementClientSection
+        clientId={client.id}
+        pressingId={client.pressing_id}
+        peutGerer={peut('gerer_clients')}
+      />
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-gray-700">

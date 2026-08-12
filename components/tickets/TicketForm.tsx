@@ -13,12 +13,13 @@ import {
   formatFCFA,
   labelPrestation,
   MODE_PAIEMENT_LABELS,
+  nbVetementsArticle,
   nomCouleur,
   normaliserTelephone,
   PRESTATIONS,
   validerTelephone,
 } from '@/lib/utils'
-import type { ArticleFormItem, Client, ModePaiement, Pressing, Tarif } from '@/types'
+import type { AbonnementClient, ArticleFormItem, Client, ModePaiement, Pressing, Tarif } from '@/types'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
@@ -74,6 +75,9 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
   const [horsLigneEnregistre, setHorsLigneEnregistre] = useState(false)
   const [ouvertCouleur, setOuvertCouleur] = useState<number | null>(null)
 
+  // Abonnement client
+  const [aboActif, setAboActif] = useState<AbonnementClient | null>(null)
+
   // Réduction
   const [reductionActive, setReductionActive] = useState(false)
   const [reductionType, setReductionType] = useState<'pct' | 'montant'>('pct')
@@ -118,10 +122,31 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
     }
   }, [rechercheTel, pressingId, clientChoisi, creerNouveau])
 
+  async function chargerAbonnement(clientId: string, pid: string) {
+    const now = new Date().toISOString()
+    const { data } = await supabase
+      .from('abonnements_clients')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('pressing_id', pid)
+      .eq('statut', 'actif')
+      .gt('date_fin', now)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    const abo = (data?.[0] ?? null) as AbonnementClient | null
+    // Vérifier côté client que le quota n'est pas déjà atteint
+    if (abo && abo.vetements_utilises >= abo.quota_vetements) {
+      setAboActif(null)
+    } else {
+      setAboActif(abo)
+    }
+  }
+
   function choisirClient(c: Client) {
     setClientChoisi(c)
     setSuggestions([])
     setRechercheTel(c.telephone)
+    void chargerAbonnement(c.id, pressingId)
   }
 
   function reinitialiserClient() {
@@ -130,6 +155,7 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
     setNouveauNom('')
     setRechercheTel('')
     setSuggestions([])
+    setAboActif(null)
   }
 
   // ---- Panier ----
@@ -327,6 +353,20 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
         })
       }
 
+      // --- Déduction de l'abonnement client ---
+      if (aboActif) {
+        const totalVetements = articlesValides.reduce(
+          (s, a) => s + nbVetementsArticle(a.type_article, a.quantite),
+          0
+        )
+        const nouveauUtilise = aboActif.vetements_utilises + totalVetements
+        const nouveauStatut = nouveauUtilise >= aboActif.quota_vetements ? 'epuise' : 'actif'
+        await supabase
+          .from('abonnements_clients')
+          .update({ vetements_utilises: nouveauUtilise, statut: nouveauStatut })
+          .eq('id', aboActif.id)
+      }
+
       router.push(`/tickets/${ticket.id as string}?nouveau=1`)
     } catch {
       // Erreur réseau → enregistrement hors ligne
@@ -459,19 +499,31 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
               <h2 className="mb-3 text-sm font-semibold text-gray-700">Client</h2>
 
               {clientChoisi ? (
-                <div className="flex items-center justify-between rounded-card bg-pressci-light px-3 py-2">
-                  <div>
-                    <p className="font-semibold text-pressci-dark">{clientChoisi.nom}</p>
-                    <p className="text-sm text-gray-600">{clientChoisi.telephone}</p>
+                <>
+                  <div className="flex items-center justify-between rounded-card bg-pressci-light px-3 py-2">
+                    <div>
+                      <p className="font-semibold text-pressci-dark">{clientChoisi.nom}</p>
+                      <p className="text-sm text-gray-600">{clientChoisi.telephone}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={reinitialiserClient}
+                      className="text-sm font-medium text-pressci-primary"
+                    >
+                      Changer
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={reinitialiserClient}
-                    className="text-sm font-medium text-pressci-primary"
-                  >
-                    Changer
-                  </button>
-                </div>
+                  {aboActif && (
+                    <div className="mt-2 rounded-card border border-green-200 bg-green-50 px-3 py-2">
+                      <p className="text-xs font-semibold text-green-800">
+                        Abonné — {aboActif.nom_formule}
+                      </p>
+                      <p className="text-xs text-green-700">
+                        {Math.max(0, aboActif.quota_vetements - aboActif.vetements_utilises)} vêtement{(aboActif.quota_vetements - aboActif.vetements_utilises) > 1 ? 's' : ''} restant{(aboActif.quota_vetements - aboActif.vetements_utilises) > 1 ? 's' : ''} sur {aboActif.quota_vetements}
+                      </p>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="space-y-3">
                   <Input
