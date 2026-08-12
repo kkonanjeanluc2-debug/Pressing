@@ -3,15 +3,18 @@
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
+import { genererAbonnementPdf } from '@/lib/abonnementPdf'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate, formatFCFA } from '@/lib/utils'
-import type { AbonnementClient, FormuleAbonnement } from '@/types'
+import type { AbonnementClient, Client, FormuleAbonnement, Pressing } from '@/types'
 import { useEffect, useState } from 'react'
 
 interface Props {
   clientId: string
   pressingId: string
   peutGerer: boolean
+  client: Client
+  pressing: Pressing | null
 }
 
 function statutEffectif(abo: AbonnementClient): 'actif' | 'epuise' | 'expire' {
@@ -20,7 +23,13 @@ function statutEffectif(abo: AbonnementClient): 'actif' | 'epuise' | 'expire' {
   return 'actif'
 }
 
-export default function AbonnementClientSection({ clientId, pressingId, peutGerer }: Props) {
+export default function AbonnementClientSection({
+  clientId,
+  pressingId,
+  peutGerer,
+  client,
+  pressing,
+}: Props) {
   const supabase = createClient()
 
   const [aboActif, setAboActif] = useState<AbonnementClient | null>(null)
@@ -65,6 +74,12 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
 
   useEffect(() => { void charger() }, [clientId, pressingId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  function telechargerRecu(abo: AbonnementClient) {
+    if (!pressing) return
+    const doc = genererAbonnementPdf(abo, client, pressing)
+    doc.save(`recu-abonnement-${client.nom.replace(/\s+/g, '-')}.pdf`)
+  }
+
   function ouvrirForm() {
     setFormuleChoisie(null)
     setNomLibre('')
@@ -88,7 +103,6 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
     let prix: number
     let formuleId: string | null
 
-    // mode libre si explicitement choisi ou si aucune formule disponible
     const estLibre = modeLibre || formules.length === 0
 
     if (estLibre) {
@@ -107,21 +121,31 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
     }
 
     setEnregistrement(true)
-    const { error } = await supabase.from('abonnements_clients').insert({
-      pressing_id: pressingId,
-      client_id: clientId,
-      formule_id: formuleId,
-      nom_formule: nomFormule,
-      quota_vetements: quota,
-      prix,
-      date_debut: debut.toISOString(),
-      date_fin: fin.toISOString(),
-      statut: 'actif',
-    })
+    const { data: rows, error } = await supabase
+      .from('abonnements_clients')
+      .insert({
+        pressing_id: pressingId,
+        client_id: clientId,
+        formule_id: formuleId,
+        nom_formule: nomFormule,
+        quota_vetements: quota,
+        prix,
+        date_debut: debut.toISOString(),
+        date_fin: fin.toISOString(),
+        statut: 'actif',
+      })
+      .select('*')
+      .single()
     setEnregistrement(false)
     if (error) { setErreur('Échec de la souscription. Réessayez.'); return }
+
     setAfficherForm(false)
     await charger()
+
+    // Téléchargement automatique du reçu
+    if (rows && pressing) {
+      telechargerRecu(rows as AbonnementClient)
+    }
   }
 
   if (chargement) {
@@ -167,11 +191,10 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
             </span>
           </div>
           <p className="text-xs text-green-700">
-            {resteVetements} vêtement{resteVetements > 1 ? 's' : ''} restant{resteVetements > 1 ? 's' : ''} sur {aboActif.quota_vetements}
-            {' · '}{jRestants} jour{jRestants > 1 ? 's' : ''} restant{jRestants > 1 ? 's' : ''}
+            {resteVetements} vêtement{resteVetements !== 1 ? 's' : ''} restant{resteVetements !== 1 ? 's' : ''} sur {aboActif.quota_vetements}
+            {' · '}{jRestants} jour{jRestants !== 1 ? 's' : ''} restant{jRestants !== 1 ? 's' : ''}
           </p>
 
-          {/* Barre de progression */}
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-green-200">
             <div
               className="h-full rounded-full bg-green-600 transition-all"
@@ -186,6 +209,16 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
             Du {formatDate(aboActif.date_debut)} au {formatDate(aboActif.date_fin)}
             {aboActif.prix > 0 ? ` · ${formatFCFA(aboActif.prix)}` : ''}
           </p>
+
+          {pressing && (
+            <button
+              type="button"
+              onClick={() => telechargerRecu(aboActif)}
+              className="mt-2 w-full rounded-card border border-green-300 bg-white py-2 text-xs font-semibold text-green-800 hover:bg-green-100"
+            >
+              Télécharger le reçu PDF
+            </button>
+          )}
         </div>
       )}
 
@@ -194,7 +227,6 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
         <div className="space-y-3 rounded-card border border-dashed border-pressci-primary bg-pressci-light p-3">
           <p className="text-xs font-semibold text-gray-700">Nouvelle souscription (30 jours)</p>
 
-          {/* Choix formule ou libre */}
           {formules.length > 0 && (
             <div className="flex gap-2">
               <button
@@ -276,7 +308,7 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
 
           <div className="flex gap-2">
             <Button className="flex-1" chargement={enregistrement} onClick={() => void souscrire()}>
-              Confirmer
+              Confirmer &amp; télécharger le reçu
             </Button>
             <Button variante="ghost" className="flex-1" onClick={() => setAfficherForm(false)}>
               Annuler
@@ -298,17 +330,30 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
                     <p className="text-xs font-semibold text-gray-600">{h.nom_formule}</p>
                     <p className="text-[11px] text-gray-400">
                       {h.vetements_utilises}/{h.quota_vetements} pièces · {formatDate(h.date_debut)} – {formatDate(h.date_fin)}
+                      {h.prix > 0 ? ` · ${formatFCFA(h.prix)}` : ''}
                     </p>
                   </div>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      s === 'epuise'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {s === 'epuise' ? 'Épuisé' : 'Expiré'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        s === 'epuise'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {s === 'epuise' ? 'Épuisé' : 'Expiré'}
+                    </span>
+                    {pressing && (
+                      <button
+                        type="button"
+                        onClick={() => telechargerRecu(h)}
+                        className="text-[11px] font-medium text-pressci-primary"
+                        title="Télécharger le reçu"
+                      >
+                        PDF
+                      </button>
+                    )}
+                  </div>
                 </div>
               )
             })}

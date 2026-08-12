@@ -114,6 +114,8 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         clientId={client.id}
         pressingId={client.pressing_id}
         peutGerer={peut('gerer_clients')}
+        client={client}
+        pressing={pressings.find((p) => p.id === client.pressing_id) ?? null}
       />
 
       <section>

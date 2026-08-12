@@ -310,6 +310,10 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
       })
       if (erreurNumero || typeof numero !== 'string') throw erreurNumero
 
+      // Abonnement actif → ticket gratuit (déjà facturé via l'abonnement)
+      const montantFacture = aboActif ? 0 : montantTotal
+      const payeEffectif = aboActif ? 0 : paye
+
       // --- Création du ticket ---
       const { data: ticket, error: erreurTicket } = await supabase
         .from('tickets')
@@ -318,11 +322,11 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           client_id: clientId,
           numero,
           statut: 'nouveau',
-          montant_total: montantTotal,
-          montant_paye: paye,
+          montant_total: montantFacture,
+          montant_paye: payeEffectif,
           // reduction omis si 0 pour compatibilité avec l'ancien schéma
-          ...(reductionMontant > 0 ? { reduction: reductionMontant } : {}),
-          mode_paiement: modePaiement,
+          ...(!aboActif && reductionMontant > 0 ? { reduction: reductionMontant } : {}),
+          mode_paiement: aboActif ? null : modePaiement,
           date_prevue: new Date(`${datePrevue}T18:00:00`).toISOString(),
           notes: notes.trim() || null,
         })
@@ -336,8 +340,9 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           ticket_id: ticket.id as string,
           type_article: a.type_article.trim(),
           quantite: a.quantite,
-          prix_unitaire: a.prix_unitaire,
-          sous_total: a.quantite * a.prix_unitaire,
+          // prix à 0 si abonnement actif (déjà couvert)
+          prix_unitaire: aboActif ? 0 : a.prix_unitaire,
+          sous_total: aboActif ? 0 : a.quantite * a.prix_unitaire,
           couleur: a.couleur ?? null,
           // prestation omis si vide pour compatibilité avec l'ancien schéma
           ...(a.prestation ? { prestation: a.prestation } : {}),
@@ -345,12 +350,12 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
       )
       if (erreurArticles) throw erreurArticles
 
-      // --- Encaissement initial (caisse du jour) ---
-      if (paye > 0 && modePaiement !== 'a_recuperer') {
+      // --- Encaissement initial (caisse du jour) — uniquement sans abonnement ---
+      if (!aboActif && payeEffectif > 0 && modePaiement !== 'a_recuperer') {
         await supabase.from('encaissements').insert({
           pressing_id: pressingId,
           ticket_id: ticket.id as string,
-          montant: paye,
+          montant: payeEffectif,
           mode_paiement: modePaiement,
         })
       }
@@ -658,20 +663,23 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
 
                       {/* Ligne 3 : prix | couleur | − qté + | sous-total */}
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min={0}
-                            value={article.prix_unitaire || ''}
-                            placeholder="Prix"
-                            onChange={(e) =>
-                              majLigne(i, { prix_unitaire: parseInt(e.target.value, 10) || 0 })
-                            }
-                            className="w-20 rounded border border-gray-200 px-1.5 py-0.5 text-xs outline-none focus:border-pressci-primary"
-                            aria-label={`Prix unitaire de ${article.type_article || "l'article"}`}
-                          />
-                          <span className="text-xs text-gray-400">FCFA</span>
-                        </div>
+                        {/* Prix — masqué si abonnement actif */}
+                        {!aboActif && (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min={0}
+                              value={article.prix_unitaire || ''}
+                              placeholder="Prix"
+                              onChange={(e) =>
+                                majLigne(i, { prix_unitaire: parseInt(e.target.value, 10) || 0 })
+                              }
+                              className="w-20 rounded border border-gray-200 px-1.5 py-0.5 text-xs outline-none focus:border-pressci-primary"
+                              aria-label={`Prix unitaire de ${article.type_article || "l'article"}`}
+                            />
+                            <span className="text-xs text-gray-400">FCFA</span>
+                          </div>
+                        )}
 
                         {/* Bouton couleur */}
                         <div className="shrink-0">
@@ -706,18 +714,20 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                           >+</button>
                         </div>
 
-                        {/* Sous-total */}
-                        <span className="w-16 shrink-0 text-right text-sm font-semibold text-gray-800">
-                          {(article.quantite * article.prix_unitaire).toLocaleString('fr-FR')}
-                        </span>
+                        {/* Sous-total — masqué si abonnement actif */}
+                        {!aboActif && (
+                          <span className="w-16 shrink-0 text-right text-sm font-semibold text-gray-800">
+                            {(article.quantite * article.prix_unitaire).toLocaleString('fr-FR')}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Réduction */}
-              {articles.length > 0 && (
+              {/* Réduction — masquée si abonnement actif */}
+              {articles.length > 0 && !aboActif && (
                 <div className="mt-3 border-t border-dashed border-gray-200 pt-3">
                   <button
                     type="button"
@@ -815,7 +825,8 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                   onChange={(e) => setDatePrevue(e.target.value)}
                   required
                 />
-                {modePaiement !== 'a_recuperer' ? (
+                {/* Montant payé — masqué si abonnement actif */}
+                {!aboActif && modePaiement !== 'a_recuperer' ? (
                   <Input
                     label="Montant payé à la dépose (FCFA)"
                     type="number"
@@ -830,27 +841,30 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                 )}
               </div>
 
-              <div>
-                <span className="mb-1 block text-sm font-medium text-gray-700">
-                  Mode de paiement
-                </span>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {MODES.map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setModePaiement(mode)}
-                      className={`rounded-card border px-3 py-2.5 text-sm font-medium ${
-                        modePaiement === mode
-                          ? 'border-pressci-primary bg-pressci-light text-pressci-dark'
-                          : 'border-gray-300 bg-white text-gray-600'
-                      }`}
-                    >
-                      {MODE_PAIEMENT_LABELS[mode]}
-                    </button>
-                  ))}
+              {/* Mode de paiement — masqué si abonnement actif */}
+              {!aboActif && (
+                <div>
+                  <span className="mb-1 block text-sm font-medium text-gray-700">
+                    Mode de paiement
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {MODES.map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setModePaiement(mode)}
+                        className={`rounded-card border px-3 py-2.5 text-sm font-medium ${
+                          modePaiement === mode
+                            ? 'border-pressci-primary bg-pressci-light text-pressci-dark'
+                            : 'border-gray-300 bg-white text-gray-600'
+                        }`}
+                      >
+                        {MODE_PAIEMENT_LABELS[mode]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label htmlFor="notes" className="mb-1 block text-sm font-medium text-gray-700">
@@ -875,12 +889,18 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
             <div className="sticky bottom-20 z-30 flex items-center justify-between gap-3 rounded-card bg-pressci-dark p-3 text-white shadow-lg lg:bottom-4">
               <div>
                 <p className="text-xs opacity-70">
-                  {nbPieces} pièce{nbPieces > 1 ? 's' : ''} · Total à payer
+                  {nbPieces} pièce{nbPieces > 1 ? 's' : ''} · {aboActif ? 'Abonnement actif' : 'Total à payer'}
                 </p>
-                {reductionMontant > 0 && (
-                  <p className="text-xs line-through opacity-40">{formatFCFA(montantBrut)}</p>
+                {aboActif ? (
+                  <p className="text-sm font-semibold text-green-300">Couvert par l'abonnement</p>
+                ) : (
+                  <>
+                    {reductionMontant > 0 && (
+                      <p className="text-xs line-through opacity-40">{formatFCFA(montantBrut)}</p>
+                    )}
+                    <p className="text-xl font-bold text-pressci-accent">{formatFCFA(montantTotal)}</p>
+                  </>
                 )}
-                <p className="text-xl font-bold text-pressci-accent">{formatFCFA(montantTotal)}</p>
               </div>
               <Button type="submit" chargement={chargement} className="shrink-0">
                 ✓ Enregistrer le dépôt
