@@ -88,7 +88,10 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
     let prix: number
     let formuleId: string | null
 
-    if (modeLibre) {
+    // mode libre si explicitement choisi ou si aucune formule disponible
+    const estLibre = modeLibre || formules.length === 0
+
+    if (estLibre) {
       nomFormule = nomLibre.trim()
       quota = parseInt(quotaLibre, 10) || 0
       prix = parseInt(prixLibre, 10) || 0
@@ -96,7 +99,7 @@ export default function AbonnementClientSection({ clientId, pressingId, peutGere
       if (nomFormule.length < 2) { setErreur('Entrez un nom de formule.'); return }
       if (quota < 1) { setErreur('Le quota doit être ≥ 1.'); return }
     } else {
-      if (!formuleChoisie) { setErreur('Choisissez une formule.'); return }
+      if (!formuleChoisie) { setErreur('Sélectionnez une formule dans la liste.'); return }
       nomFormule = formuleChoisie.nom
       quota = formuleChoisie.quota_vetements
       prix = formuleChoisie.prix
