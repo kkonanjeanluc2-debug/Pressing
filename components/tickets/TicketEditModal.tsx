@@ -131,7 +131,7 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
       .update({
         montant_total: montantTotal,
         montant_paye: montantPayeAjuste,
-        reduction: reductionMontant,
+        ...(reductionMontant > 0 ? { reduction: reductionMontant } : {}),
         date_prevue: new Date(`${datePrevue}T18:00:00`).toISOString(),
         mode_paiement: modePaiement,
         notes: notes.trim() || null,
@@ -153,7 +153,7 @@ export default function TicketEditModal({ ticket, pressing, onClose, onSuccess }
         prix_unitaire: a.prix_unitaire,
         sous_total: a.quantite * a.prix_unitaire,
         couleur: a.couleur ?? null,
-        prestation: a.prestation ?? null,
+        ...(a.prestation ? { prestation: a.prestation } : {}),
       }))
     )
 

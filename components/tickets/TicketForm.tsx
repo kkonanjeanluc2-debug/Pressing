@@ -320,7 +320,8 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           statut: 'nouveau',
           montant_total: montantTotal,
           montant_paye: paye,
-          reduction: reductionMontant,
+          // reduction omis si 0 pour compatibilité avec l'ancien schéma
+          ...(reductionMontant > 0 ? { reduction: reductionMontant } : {}),
           mode_paiement: modePaiement,
           date_prevue: new Date(`${datePrevue}T18:00:00`).toISOString(),
           notes: notes.trim() || null,
@@ -338,7 +339,8 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           prix_unitaire: a.prix_unitaire,
           sous_total: a.quantite * a.prix_unitaire,
           couleur: a.couleur ?? null,
-          prestation: a.prestation ?? null,
+          // prestation omis si vide pour compatibilité avec l'ancien schéma
+          ...(a.prestation ? { prestation: a.prestation } : {}),
         }))
       )
       if (erreurArticles) throw erreurArticles
@@ -368,7 +370,8 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
       }
 
       router.push(`/tickets/${ticket.id as string}?nouveau=1`)
-    } catch {
+    } catch (err) {
+      console.error('[TicketForm] Erreur création ticket:', err)
       // Erreur réseau → enregistrement hors ligne
       if (!navigator.onLine) {
         mettreEnFileHorsLigne()
