@@ -536,9 +536,10 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
                 <div className="space-y-3">
                   <Input
                     label="Téléphone ou nom du client"
-                    type="tel"
+                    type="text"
+                    inputMode="text"
                     name="recherche_client"
-                    placeholder="07 07 07 07 07"
+                    placeholder="Nom ou 07 07 07 07 07"
                     value={rechercheTel}
                     onChange={(e) => setRechercheTel(e.target.value)}
                     autoComplete="off"
