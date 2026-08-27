@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
 import { rechercherClients } from '@/hooks/useClients'
+import { invaliderParPrefixe } from '@/lib/cache'
 import { createClient } from '@/lib/supabase/client'
 import { ajouterTicketHorsLigne } from '@/lib/ticketHorsLigne'
 import {
@@ -373,6 +374,11 @@ export default function TicketForm({ pressings, pressingInitial }: TicketFormPro
           .update({ vetements_utilises: nouveauUtilise, statut: nouveauStatut })
           .eq('id', aboActif.id)
       }
+
+      // Invalider les caches pour que la recette du jour se rafraîchisse immédiatement
+      invaliderParPrefixe(`encaisse_${pressingId}`)
+      invaliderParPrefixe('resume_')
+      invaliderParPrefixe('dashboard_')
 
       router.push(`/tickets/${ticket.id as string}?nouveau=1`)
     } catch (err) {

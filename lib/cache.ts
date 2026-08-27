@@ -43,6 +43,31 @@ export function ecrireCache<T>(cle: string, valeur: T): void {
   }
 }
 
+/**
+ * Invalide toutes les entrées dont la clé commence par `prefixe`.
+ * À appeler après une mutation (ex: création de ticket / encaissement)
+ * pour que la prochaine navigation force un rechargement réseau.
+ */
+export function invaliderParPrefixe(prefixe: string): void {
+  for (const cle of Array.from(memoire.keys())) {
+    if (cle.startsWith(prefixe)) {
+      memoire.delete(cle)
+      horodatages.delete(cle)
+    }
+  }
+  if (typeof window === 'undefined') return
+  try {
+    const aSupprimer: string[] = []
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const cle = window.localStorage.key(i)
+      if (cle && cle.startsWith(PREFIXE + prefixe)) aSupprimer.push(cle)
+    }
+    aSupprimer.forEach((c) => window.localStorage.removeItem(c))
+  } catch {
+    // ignorer
+  }
+}
+
 /** Vide tout le cache (à appeler à la déconnexion). */
 export function viderCache(): void {
   memoire.clear()
