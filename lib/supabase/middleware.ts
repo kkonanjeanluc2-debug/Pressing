@@ -36,13 +36,13 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     }
   )
 
-  // getUser() appelle le serveur Supabase à chaque requête pour vérifier le token.
-  // C'est plus lent que getSession() (cookie local) mais indispensable pour
-  // détecter immédiatement les comptes bannis/désactivés sans attendre
-  // l'expiration naturelle du JWT (1 heure).
+  // getSession() lit le JWT depuis le cookie (pas d'appel réseau) — suffisant pour
+  // les décisions de routage. Les pages server qui accèdent à des données sensibles
+  // doivent appeler getUser() elles-mêmes pour valider le token côté Supabase.
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
   const pathname = request.nextUrl.pathname
   const estRoutePublique = ROUTES_PUBLIQUES.some((r) => pathname.startsWith(r))
@@ -58,21 +58,22 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (user) {
-    // Compte désactivé : bloquer l'accès à toutes les routes protégées.
-    // On laisse passer /login et les autres routes publiques pour éviter
-    // la boucle de redirection (l'utilisateur reste connecté côté cookie).
     const meta = user.user_metadata as Record<string, unknown> | undefined
+
+    // Compte désactivé
     if (meta?.compte_actif === false && !estRoutePublique && !estRouteApi) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
 
-    // Détecter un partenaire : d'abord via les métadonnées (rapide, sans DB),
-    // sinon via la table partenaires (fallback pour comptes antérieurs sans role).
-    let estPartenaire = user.user_metadata?.role === 'partenaire'
+    // Détecter un partenaire via les métadonnées (sans DB).
+    // Fallback DB uniquement pour les comptes anciens sans role dans les métadonnées
+    // ET seulement sur les routes partenaire/ordinaires (pas sur /admin pour éviter
+    // un appel DB supplémentaire sur ces routes déjà chargées).
+    let estPartenaire = meta?.role === 'partenaire'
 
-    if (!estPartenaire && !estRouteApi) {
+    if (!estPartenaire && !estRouteApi && !estRouteAdmin && meta?.role === undefined) {
       const { data } = await supabase
         .from('partenaires')
         .select('id')
@@ -82,7 +83,6 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     }
 
     if (estPartenaire) {
-      // Partenaire → toujours vers l'espace /partenaire
       if (!estRoutePartenaire && !estRouteApi) {
         const url = request.nextUrl.clone()
         url.pathname = '/partenaire'
@@ -92,21 +92,20 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     }
 
     // Utilisateur ordinaire connecté → pas d'accès aux pages login/register
-    // Exception : compte désactivé → rester sur /login (déjà filtré plus haut)
     if (estRoutePublique && meta?.compte_actif !== false) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
     }
 
-    // Utilisateur ordinaire connecté → pas d'accès à l'espace partenaire
+    // Utilisateur ordinaire → pas d'accès à l'espace partenaire
     if (estRoutePartenaire) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
     }
 
-    // Utilisateur ordinaire → vérifier super-admin pour accéder à /admin
+    // Vérifier super-admin uniquement sur les routes /admin
     if (estRouteAdmin) {
       const { data: adminRow } = await supabase
         .from('super_admins')
