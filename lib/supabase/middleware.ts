@@ -67,13 +67,13 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       return NextResponse.redirect(url)
     }
 
-    // Détecter un partenaire via les métadonnées (sans DB).
-    // Fallback DB uniquement pour les comptes anciens sans role dans les métadonnées
-    // ET seulement sur les routes partenaire/ordinaires (pas sur /admin pour éviter
-    // un appel DB supplémentaire sur ces routes déjà chargées).
+    // Détecter un partenaire via les métadonnées uniquement (zéro DB, zéro réseau).
+    // Le fallback DB n'est déclenché que si le partenaire tente d'accéder à /partenaire
+    // et n'a pas encore de role dans ses métadonnées (comptes très anciens).
+    // Sur toutes les autres routes, on ne fait aucun appel DB pour éviter le timeout.
     let estPartenaire = meta?.role === 'partenaire'
 
-    if (!estPartenaire && !estRouteApi && !estRouteAdmin && meta?.role === undefined) {
+    if (!estPartenaire && estRoutePartenaire && meta?.role === undefined) {
       const { data } = await supabase
         .from('partenaires')
         .select('id')
