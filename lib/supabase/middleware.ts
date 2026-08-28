@@ -9,44 +9,69 @@ interface JwtPayload {
   user_metadata?: Record<string, unknown>
 }
 
-/**
- * Décode le JWT Supabase depuis les cookies sans aucun appel réseau.
- * Les cookies SSR de Supabase suivent le pattern sb-<ref>-auth-token[.0,.1,…]
- */
-function lireJwt(request: NextRequest): JwtPayload | null {
-  const parts = request.cookies
-    .getAll()
-    .filter((c) => /^sb-.+-auth-token/.test(c.name))
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((c) => c.value)
+interface SessionInfo {
+  /** true si un cookie d'auth Supabase existe dans la requête */
+  cookiePresent: boolean
+  /** payload JWT décodé localement (null si absent ou expiré) */
+  payload: JwtPayload | null
+}
 
-  if (parts.length === 0) return null
+/**
+ * Lit le cookie de session Supabase SSR et tente de décoder le JWT localement.
+ * Aucun appel réseau — lecture et décodage base64 purs.
+ *
+ * @supabase/ssr 0.5.x stocke la session sous la forme :
+ *   - Cookie unique  : value = JSON brut (si len(URL-encoded) ≤ 3180)
+ *   - Cookies multiples : sb-<ref>-auth-token.0, .1 … → parties du JSON brut jointes
+ *   - Optionnel      : value = "base64-<base64url(json)>" si cookieEncoding:"base64url"
+ */
+function lireSession(request: NextRequest): SessionInfo {
+  const authCookies = request.cookies
+    .getAll()
+    .filter((c) => /^sb-.+-auth-token/.test(c.name) && c.value)
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  if (authCookies.length === 0) return { cookiePresent: false, payload: null }
 
   try {
-    const raw = decodeURIComponent(parts.join(''))
+    let raw = authCookies.map((c) => c.value).join('')
+
+    // Support du format base64url (cookieEncoding: 'base64url')
+    if (raw.startsWith('base64-')) {
+      raw = atob(raw.slice(7).replace(/-/g, '+').replace(/_/g, '/'))
+    }
+
+    // Les valeurs peuvent être URL-encodées
+    try { raw = decodeURIComponent(raw) } catch { /* non URL-encoded, on garde tel quel */ }
+
     const session = JSON.parse(raw) as { access_token?: string }
     const token = session.access_token
-    if (!token) return null
+    if (!token) return { cookiePresent: true, payload: null }
 
     const b64 = token.split('.')[1]
-    if (!b64) return null
+    if (!b64) return { cookiePresent: true, payload: null }
 
     const payload = JSON.parse(
       atob(b64.replace(/-/g, '+').replace(/_/g, '/'))
     ) as JwtPayload
 
-    // Token expiré → le client Supabase gèrera le refresh côté navigateur
-    if (!payload.exp || payload.exp * 1000 < Date.now()) return null
+    // Token expiré → cookiePresent = true mais payload = null
+    // Le client Supabase côté navigateur renouvellera le token automatiquement
+    if (!payload.exp || payload.exp * 1000 < Date.now()) {
+      return { cookiePresent: true, payload: null }
+    }
 
-    return payload
+    return { cookiePresent: true, payload }
   } catch {
-    return null
+    // Cookie présent mais illisible → on considère l'utilisateur comme connecté
+    // pour éviter la boucle de redirection. Les pages valideront avec getUser().
+    return { cookiePresent: true, payload: null }
   }
 }
 
 /**
- * Protège les routes et rafraîchit les cookies de session.
- * Les décisions de routing sont basées sur le JWT local (zéro réseau).
+ * Protège les routes et gère le routing selon le profil de l'utilisateur.
+ * Toutes les décisions sont basées sur le JWT local (zéro réseau).
  * Seul /admin fait un appel DB pour vérifier le super-admin.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
@@ -60,16 +85,28 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const estRoutePartenaire = pathname.startsWith('/partenaire')
   const estRouteAdmin = pathname.startsWith('/admin')
 
-  // Lecture locale du JWT — aucun appel réseau
-  const jwt = lireJwt(request)
-  const userId = jwt?.sub ?? null
-  const meta = (jwt?.user_metadata ?? {}) as Record<string, unknown>
+  const { cookiePresent, payload } = lireSession(request)
+  const userId = payload?.sub ?? null
+  const meta = (payload?.user_metadata ?? {}) as Record<string, unknown>
 
-  // Non connecté (ou token expiré) → /login
-  if (!userId && !estRoutePublique && !estRouteApi) {
+  // Pas de cookie → non connecté → /login (sauf routes publiques et API)
+  if (!cookiePresent && !estRoutePublique && !estRouteApi) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
+  }
+
+  // Cookie présent mais payload illisible (token expiré ou format inattendu) :
+  // on laisse passer vers la page. La page appellera getUser() et redirigera
+  // si nécessaire. Pas de boucle de redirection.
+  if (cookiePresent && !userId) {
+    // Exception : éviter d'atterrir sur /login si on est déjà connecté
+    if (estRoutePublique) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next({ request })
   }
 
   if (userId) {
@@ -104,7 +141,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       return NextResponse.redirect(url)
     }
 
-    // /admin → seul appel DB restant (route rare, utilisée uniquement par les admins)
+    // /admin → seul appel DB restant (route rare, uniquement pour les super-admins)
     if (estRouteAdmin) {
       let supabaseResponse = NextResponse.next({ request })
       const supabase = createServerClient(
