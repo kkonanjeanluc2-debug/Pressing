@@ -1,29 +1,29 @@
-‘use client’
+'use client'
 
-import Button from ‘@/components/ui/Button’
-import Input from ‘@/components/ui/Input’
-import SansPressing from ‘@/components/ui/SansPressing’
-import { useClients } from ‘@/hooks/useClients’
-import { usePressing } from ‘@/hooks/usePressing’
-import { useProfil } from ‘@/hooks/useProfil’
-import { invaliderParPrefixe } from ‘@/lib/cache’
-import { createClient as createSupabase } from ‘@/lib/supabase/client’
-import { formatFCFA, normaliserTelephone, validerTelephone } from ‘@/lib/utils’
-import Link from ‘next/link’
-import { useState } from ‘react’
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import SansPressing from '@/components/ui/SansPressing'
+import { useClients } from '@/hooks/useClients'
+import { usePressing } from '@/hooks/usePressing'
+import { useProfil } from '@/hooks/useProfil'
+import { invaliderParPrefixe } from '@/lib/cache'
+import { createClient as createSupabase } from '@/lib/supabase/client'
+import { formatFCFA, normaliserTelephone, validerTelephone } from '@/lib/utils'
+import Link from 'next/link'
+import { useState } from 'react'
 
 export default function ClientsPage() {
   const { pressing, pressings, chargement: chargementPressing } = usePressing()
   const { peut } = useProfil()
   const ids = pressings.map((p) => p.id)
   const { clients, chargement, erreur, recharger } = useClients(ids.length > 0 ? ids : null)
-  const [recherche, setRecherche] = useState(‘’)
+  const [recherche, setRecherche] = useState('')
 
-  // Formulaire de création
+  // Formulaire de creation
   const [afficherForm, setAfficherForm] = useState(false)
-  const [nom, setNom] = useState(‘’)
-  const [telephone, setTelephone] = useState(‘’)
-  const [pressingChoisi, setPressingChoisi] = useState<string>(() => pressings[0]?.id ?? ‘’)
+  const [nom, setNom] = useState('')
+  const [telephone, setTelephone] = useState('')
+  const [pressingChoisi, setPressingChoisi] = useState<string>(() => pressings[0]?.id ?? '')
   const [enregistrement, setEnregistrement] = useState(false)
   const [erreurForm, setErreurForm] = useState<string | null>(null)
 
@@ -38,9 +38,9 @@ export default function ClientsPage() {
     : clients
 
   function ouvrirForm() {
-    setNom(‘’)
-    setTelephone(‘’)
-    setPressingChoisi(pressings[0]?.id ?? ‘’)
+    setNom('')
+    setTelephone('')
+    setPressingChoisi(pressings[0]?.id ?? '')
     setErreurForm(null)
     setAfficherForm(true)
   }
@@ -48,25 +48,25 @@ export default function ClientsPage() {
   async function creerClient() {
     const nomTrim = nom.trim()
     const telNorm = normaliserTelephone(telephone)
-    if (nomTrim.length < 2) { setErreurForm(‘Le nom doit avoir au moins 2 caractères.’); return }
-    if (!validerTelephone(telephone)) { setErreurForm(‘Le numéro doit avoir 10 chiffres (ex : 07 07 07 07 07).’); return }
+    if (nomTrim.length < 2) { setErreurForm('Le nom doit avoir au moins 2 caracteres.'); return }
+    if (!validerTelephone(telephone)) { setErreurForm('Le numero doit avoir 10 chiffres (ex : 07 07 07 07 07).'); return }
     const pid = pressingChoisi || pressings[0]?.id
-    if (!pid) { setErreurForm(‘Aucun pressing sélectionné.’); return }
+    if (!pid) { setErreurForm('Aucun pressing selectionne.'); return }
 
     setEnregistrement(true)
     setErreurForm(null)
     const supabase = createSupabase()
     const { error } = await supabase
-      .from(‘clients’)
+      .from('clients')
       .insert({ pressing_id: pid, nom: nomTrim, telephone: telNorm })
     setEnregistrement(false)
 
     if (error) {
-      setErreurForm(‘La création a échoué. Vérifiez que ce numéro n\’est pas déjà utilisé.’)
+      setErreurForm('La creation a echoue. Verifiez que ce numero nest pas deja utilise.')
       return
     }
 
-    invaliderParPrefixe(‘clients_’)
+    invaliderParPrefixe('clients_')
     setAfficherForm(false)
     await recharger()
   }
@@ -77,11 +77,11 @@ export default function ClientsPage() {
         <div>
           <h1 className="text-xl font-bold text-pressci-dark">Clients</h1>
           <p className="text-sm text-gray-500">
-            {clients.length} client{clients.length > 1 ? ‘s’ : ‘’} enregistré
-            {clients.length > 1 ? ‘s’ : ‘’}
+            {clients.length} client{clients.length > 1 ? 's' : ''} enregistre
+            {clients.length > 1 ? 's' : ''}
           </p>
         </div>
-        {peut(‘gerer_clients’) && (
+        {peut('gerer_clients') && (
           <button
             type="button"
             onClick={ouvrirForm}
@@ -94,7 +94,7 @@ export default function ClientsPage() {
 
       <input
         type="search"
-        placeholder="Rechercher par nom ou téléphone…"
+        placeholder="Rechercher par nom ou telephone..."
         value={recherche}
         onChange={(e) => setRecherche(e.target.value)}
         className="w-full rounded-card border border-gray-300 bg-white px-3 py-3 outline-none focus:border-pressci-primary focus:ring-2 focus:ring-pressci-accent lg:max-w-sm"
@@ -111,7 +111,7 @@ export default function ClientsPage() {
       ) : clientsFiltres.length === 0 ? (
         <div className="py-10 text-center text-gray-500">
           <p className="mb-2 text-4xl">👥</p>
-          <p>Aucun client pour l’instant.</p>
+          <p>Aucun client pour l&apos;instant.</p>
         </div>
       ) : (
         <div className="grid gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
@@ -120,13 +120,13 @@ export default function ClientsPage() {
               <div className="flex items-center justify-between rounded-card border border-gray-200 bg-white p-4 active:bg-gray-50">
                 <div>
                   <p className="font-semibold text-gray-800">
-                    {c.nom}{‘ ‘}
+                    {c.nom}{' '}
                     {c.nombre_depots >= 5 && (
-                      <span title="Client fidèle" className="text-sm">⭐</span>
+                      <span title="Client fidele" className="text-sm">⭐</span>
                     )}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {c.telephone} · {c.nombre_depots} dépôt{c.nombre_depots > 1 ? ‘s’ : ‘’}
+                    {c.telephone} · {c.nombre_depots} depot{c.nombre_depots > 1 ? 's' : ''}
                   </p>
                 </div>
                 {c.solde_creance > 0 && (
@@ -140,7 +140,7 @@ export default function ClientsPage() {
         </div>
       )}
 
-      {/* Modal de création */}
+      {/* Modal de creation */}
       {afficherForm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-card bg-white p-5">
@@ -162,13 +162,13 @@ export default function ClientsPage() {
               )}
               <Input
                 label="Nom du client"
-                placeholder="Ex : Aya Koné"
+                placeholder="Ex : Aya Kone"
                 value={nom}
                 onChange={(e) => setNom(e.target.value)}
                 autoFocus
               />
               <Input
-                label="Téléphone"
+                label="Telephone"
                 type="text"
                 inputMode="tel"
                 placeholder="07 00 00 00 00"
@@ -180,7 +180,7 @@ export default function ClientsPage() {
               )}
               <div className="flex gap-2 pt-1">
                 <Button className="flex-1" chargement={enregistrement} onClick={() => void creerClient()}>
-                  Créer le client
+                  Creer le client
                 </Button>
                 <Button variante="ghost" className="flex-1" onClick={() => setAfficherForm(false)}>
                   Annuler
