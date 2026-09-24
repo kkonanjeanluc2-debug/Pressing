@@ -35,7 +35,7 @@ async function chargerDashboard(pressingIds: string[]): Promise<DonneesDashboard
   const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1)
   const debut4Semaines = debutJour(new Date(maintenant.getTime() - 27 * 86400_000))
 
-  const [actifs, prets, clients, ticketsCreance, encaissements, pretsAnciens] =
+  const [actifs, prets, clients, ticketsStats, encaissJour, pretsAnciens] =
     await Promise.all([
       supabase
         .from('tickets')
@@ -51,16 +51,18 @@ async function chargerDashboard(pressingIds: string[]): Promise<DonneesDashboard
         .from('clients')
         .select('id', { count: 'exact', head: true })
         .in('pressing_id', pressingIds),
+      // Tickets des 4 dernières semaines : pour CA facturé (mois + graphique) + créances
       supabase
         .from('tickets')
-        .select('montant_total, montant_paye')
+        .select('montant_total, montant_paye, date_depot, statut')
         .in('pressing_id', pressingIds)
-        .neq('statut', 'annule'),
+        .gte('date_depot', debut4Semaines.toISOString()),
+      // Encaissements du jour uniquement : recettes réellement encaissées aujourd'hui
       supabase
         .from('encaissements')
-        .select('montant, created_at')
+        .select('montant')
         .in('pressing_id', pressingIds)
-        .gte('created_at', debut4Semaines.toISOString()),
+        .gte('created_at', debutAujourdhui.toISOString()),
       supabase
         .from('tickets')
         .select('*, client:clients(*)')
@@ -71,42 +73,50 @@ async function chargerDashboard(pressingIds: string[]): Promise<DonneesDashboard
     ])
 
   const premiereErreur =
-    actifs.error ?? prets.error ?? clients.error ?? ticketsCreance.error ??
-    encaissements.error ?? pretsAnciens.error
+    actifs.error ?? prets.error ?? clients.error ?? ticketsStats.error ??
+    encaissJour.error ?? pretsAnciens.error
   if (premiereErreur) throw premiereErreur
 
-  const lignesCreance = (ticketsCreance.data ?? []) as Array<{
+  const lignesTickets = (ticketsStats.data ?? []) as Array<{
     montant_total: number
     montant_paye: number
-  }>
-  const creancesTotal = lignesCreance.reduce(
-    (somme, t) => somme + Math.max(0, t.montant_total - t.montant_paye),
-    0
-  )
-
-  const lignesEnc = (encaissements.data ?? []) as Array<{
-    montant: number
-    created_at: string
+    date_depot: string
+    statut: string
   }>
 
-  const sommeDepuis = (depuis: Date): number =>
-    lignesEnc
-      .filter((e) => new Date(e.created_at) >= depuis)
-      .reduce((s, e) => s + e.montant, 0)
+  // Créances = total non payé sur tous les tickets non annulés (fenêtre 4 semaines + historique)
+  // On refait une requête séparée pour les créances car on a besoin de TOUS les tickets actifs
+  const { data: tousTicketsActifs } = await supabase
+    .from('tickets')
+    .select('montant_total, montant_paye')
+    .in('pressing_id', pressingIds)
+    .neq('statut', 'annule')
+  const creancesTotal = ((tousTicketsActifs ?? []) as Array<{ montant_total: number; montant_paye: number }>)
+    .reduce((s, t) => s + Math.max(0, t.montant_total - t.montant_paye), 0)
 
-  // CA des 4 dernières semaines (barres du mini graphique)
+  // CA facturé du mois = sum(montant_total) des tickets NON annulés créés ce mois
+  const caMois = lignesTickets
+    .filter((t) => t.statut !== 'annule' && new Date(t.date_depot) >= debutMois)
+    .reduce((s, t) => s + t.montant_total, 0)
+
+  // Recettes du jour = encaissements réellement perçus aujourd'hui
+  const recettesJour = ((encaissJour.data ?? []) as Array<{ montant: number }>)
+    .reduce((s, e) => s + e.montant, 0)
+
+  // CA facturé par semaine (4 dernières semaines) pour le graphique
   const semaines: SemaineCA[] = []
   for (let i = 3; i >= 0; i--) {
     const debut = debutJour(new Date(maintenant.getTime() - (i * 7 + 6) * 86400_000))
     const fin = new Date(
       debutJour(new Date(maintenant.getTime() - i * 7 * 86400_000)).getTime() + 86400_000
     )
-    const montant = lignesEnc
-      .filter((e) => {
-        const d = new Date(e.created_at)
+    const montant = lignesTickets
+      .filter((t) => {
+        if (t.statut === 'annule') return false
+        const d = new Date(t.date_depot)
         return d >= debut && d < fin
       })
-      .reduce((s, e) => s + e.montant, 0)
+      .reduce((s, t) => s + t.montant_total, 0)
     semaines.push({ semaine: i === 0 ? 'Cette sem.' : `S-${i}`, montant })
   }
 
@@ -114,9 +124,12 @@ async function chargerDashboard(pressingIds: string[]): Promise<DonneesDashboard
     stats: {
       tickets_actifs: actifs.count ?? 0,
       tickets_prets: prets.count ?? 0,
-      ca_jour: sommeDepuis(debutAujourdhui),
-      ca_semaine: sommeDepuis(debutSemaine),
-      ca_mois: sommeDepuis(debutMois),
+      // ca_jour = recettes réellement encaissées aujourd'hui (caisse)
+      ca_jour: recettesJour,
+      // ca_semaine non utilisé en affichage mais gardé pour compatibilité
+      ca_semaine: 0,
+      // ca_mois = CA facturé ce mois (montant_total tickets, créances comprises)
+      ca_mois: caMois,
       creances_total: creancesTotal,
       clients_total: clients.count ?? 0,
     },

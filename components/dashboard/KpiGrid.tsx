@@ -59,7 +59,7 @@ export default function KpiGrid({ stats, depotsJour, nbPressings }: KpiGridProps
       ),
     },
     {
-      label: 'Recettes du jour (FCFA)',
+      label: 'Encaisse du jour (FCFA)',
       valeur: nombre(stats.ca_jour),
       couleur: 'bg-emerald-500',
       href: '/caisse',
