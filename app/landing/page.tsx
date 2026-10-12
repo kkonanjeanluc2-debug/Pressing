@@ -317,7 +317,7 @@ export default function LandingPage() {
             </div>
 
             <p className="mt-5 text-sm text-pressci-light/50">
-              Aucune carte bancaire requise · Gratuit à vie · Installation en 2 minutes
+              Aucune carte bancaire requise · Installation en 2 minutes
             </p>
           </div>
 
