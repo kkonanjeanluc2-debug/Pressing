@@ -89,10 +89,11 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   const userId = payload?.sub ?? null
   const meta = (payload?.user_metadata ?? {}) as Record<string, unknown>
 
-  // Pas de cookie → non connecté → /login (sauf routes publiques et API)
+  // Pas de cookie → non connecté
   if (!cookiePresent && !estRoutePublique && !estRouteApi) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    // La racine "/" atterrit sur la landing page ; les autres routes protégées → /login
+    url.pathname = pathname === '/' ? '/landing' : '/login'
     return NextResponse.redirect(url)
   }
 
@@ -101,7 +102,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   // si nécessaire. Pas de boucle de redirection.
   if (cookiePresent && !userId) {
     // Exception : éviter d'atterrir sur /login si on est déjà connecté
-    if (estRoutePublique) {
+    if (estRoutePublique && pathname !== '/landing') {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
@@ -127,8 +128,9 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       return NextResponse.next({ request })
     }
 
-    // Connecté → pas d'accès aux pages publiques
-    if (estRoutePublique) {
+    // Connecté → redirige /login et /register vers le dashboard
+    // mais laisse /landing accessible (page de présentation publique)
+    if (estRoutePublique && pathname !== '/landing') {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
